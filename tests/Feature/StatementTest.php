@@ -99,3 +99,15 @@ it('não acessa a fatura de cartão de outro usuário pela URL', function () {
 
     $this->get(route('cards.invoice', $card->id))->assertNotFound();
 });
+
+it('lista em ordem do início do mês por padrão e permite inverter (preferência salva)', function () {
+    foreach (['2026-11-20' => 'Vinte', '2026-11-03' => 'Tres', '2026-11-11' => 'Onze'] as $date => $desc) {
+        Transaction::factory()->create(['description' => $desc, 'account_id' => $this->account->id, 'date' => $date]);
+    }
+
+    Livewire::test(Index::class)->assertSet('order', 'asc')->assertSeeInOrder(['Tres', 'Onze', 'Vinte'])
+        ->call('toggleOrder')->assertSet('order', 'desc')->assertSeeInOrder(['Vinte', 'Onze', 'Tres']);
+
+    // a escolha fica salva para as próximas vezes
+    Livewire::test(Index::class)->assertSet('order', 'desc');
+});
