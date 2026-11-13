@@ -41,7 +41,7 @@
 5. Faz commit numa branch `release/<versão>` e abre uma **Pull Request para `production`** (via `gh`). O deploy só acontece quando a PR é aprovada e mergeada.
 
 ## 0.5 Pós-deploy sem SSH
-- Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `migrate --force`, `optimize:clear`, `optimize` e `storage:link`, e grava a nova versão.
+- Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `optimize:clear`, `package:discover`, `migrate --force`, `optimize` e `storage:link` — **cada um em um processo PHP separado** (no mesmo processo, os caches eram gerados com a lista de pacotes antiga e o `@svg` aparecia como texto) — e só então grava a nova versão.
 - Agendado em `routes/console.php` com `everyMinute()->withoutOverlapping()`.
 - Cron na Hostoo: `* * * * * /usr/local/bin/ea-php84 ~/public_html/financee/artisan schedule:run >> /dev/null 2>&1`. O alias `php` do shell não vale no cron, por isso o caminho é completo.
 - Como há SSH e Composer 2.10 no servidor, os mesmos comandos (`composer install --no-dev`, `migrate --force`, `optimize`) também podem ser rodados manualmente em caso de problema.

@@ -26,7 +26,8 @@
 - Seeder de demonstração (`DemoSeeder`) com 6 meses de dados realistas para testes manuais.
 
 ## 10.5 Go-live
-- [ ] `.env` de produção revisado (mail, VAPID, `REGISTRATION_ENABLED`).
+- [ ] `.env` de produção revisado (VAPID, `REGISTRATION_ENABLED`).
+- [ ] **E-mail (SMTP da Hostoo)** configurado e testado: recuperação de senha e demais avisos por e-mail (adiado da Etapa 1).
 - [ ] Cron ativo (scheduler + fila) e post-deploy validado.
 - [ ] HTTPS forçado e redirecionamento www/não-www.
 - [ ] Ícones, nome e splash do PWA finais.
