@@ -1,5 +1,7 @@
 # Etapa 2 — Cadastros: instituições, contas, cartões e categorias
 
+> **Status (13/11/2026):** implementada. Instituições aparecem com sigla + cor (sem logotipos de marcas). Ficam para a Etapa 3: saldo calculado com lançamentos, e ao excluir conta/categoria com lançamentos pedir destino (hoje a exclusão é direta, com confirmação). Reordenar por arrastar ficou para a Etapa 10.
+
 ## 2.1 Instituições (seed, global)
 `institutions`: `id, name, code (COMPE), type (bank|broker|other), color, logo_path`.
 - Seed com os principais bancos e corretoras: Nubank, Itaú, Bradesco, BB, Caixa, Santander, Inter, C6, BTG, XP, Rico, Clear, NuInvest, PicPay, Mercado Pago, Sicoob, Sicredi, PagBank, "Outro".
