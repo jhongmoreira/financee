@@ -35,7 +35,7 @@
                 <div><span class="block text-xs text-white/70">Vence em</span><span class="font-semibold">{{ $invoice->due_date->format('d/m/Y') }}</span></div>
             </div>
             @if (! in_array($summary['status'], ['paid', 'future']) && $summary['remaining'] > 0)
-                <button type="button" wire:click="startPayment" class="tap mt-5 w-full rounded-xl bg-white py-3 font-semibold text-ink">
+                <button type="button" wire:click="startPayment" class="tap mt-5 w-full rounded-xl bg-white py-3 font-semibold text-gray-900">
                     Pagar fatura · <x-ui.money :value="$summary['remaining']" />
                 </button>
             @endif
