@@ -19,7 +19,7 @@ Cron cadastrado no cPanel:
 * * * * * /usr/local/bin/ea-php84 /home/mv8f1v6j/public_html/financee/artisan schedule:run >> /dev/null 2>&1
 ```
 
-## Pendente: e-mail (SMTP) — necessário só para "Esqueci a senha"
+## E-mail (SMTP) — usado no "Esqueci a senha"
 1. No cPanel, crie uma conta de e-mail, por exemplo `nao-responda@jgmoreira.com.br` (em "Contas de e-mail").
 2. Veja os dados de conexão em "Conectar dispositivos" (servidor SMTP, porta 465 com SSL).
 3. Edite `~/financee-data/.env` por SSH e ajuste:
@@ -48,7 +48,7 @@ MAIL_FROM_NAME=Financee
 - [x] Cookie de sessão seguro em produção
 - [x] Ícones, nome e tela offline do PWA
 - [x] Páginas de erro em português (404, 419, 429, 500, 503)
-- [ ] E-mail SMTP (acima)
+- [x] E-mail SMTP configurado (13/11/2026): conta nao-responda@jgmoreira.com.br criada via `uapi`; para conferir o mailer ativo: `artisan tinker --execute="echo config('mail.default');"` (deve ser smtp)
 - [ ] Uso real por 1–2 semanas conferindo saldos e faturas com os bancos
 
 ## Cuidados
