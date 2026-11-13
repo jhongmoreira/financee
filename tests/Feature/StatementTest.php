@@ -2,10 +2,13 @@
 
 use App\Livewire\Accounts\Index as AccountsIndex;
 use App\Livewire\Categories\Index as CategoriesIndex;
+use App\Livewire\Home;
 use App\Livewire\Transactions\Index;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\CreditCard;
+use App\Models\InvestmentAsset;
+use App\Models\InvestmentPortfolio;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Models\User;
@@ -110,4 +113,21 @@ it('lista em ordem do início do mês por padrão e permite inverter (preferênc
 
     // a escolha fica salva para as próximas vezes
     Livewire::test(Index::class)->assertSet('order', 'desc');
+});
+
+it('card da Início alterna entre saldo geral e patrimônio total (contas fora do total + investimentos)', function () {
+    $other = Account::create(['name' => 'Reserva', 'type' => 'savings', 'color' => '#2563eb', 'initial_balance' => 45000, 'include_in_total' => false]);
+    Account::create(['name' => 'Antiga', 'type' => 'checking', 'color' => '#6b7280', 'initial_balance' => 99900, 'archived_at' => now()]);
+    $portfolio = InvestmentPortfolio::create(['name' => 'XP', 'color' => '#111111']);
+    InvestmentAsset::create(['portfolio_id' => $portfolio->id, 'name' => 'CDB', 'class' => 'cdb', 'current_value' => 1200000]);
+
+    Livewire::test(Home::class)
+        ->assertSet('balanceView', 'geral')->assertSee('Saldo geral')->assertSee('R$ 100,00')
+        ->call('toggleBalanceView')
+        ->assertSet('balanceView', 'patrimonio')->assertSee('Patrimônio total')
+        ->assertSee('R$ 12.550,00') // 100 + 450 + 12.000 (arquivada não entra)
+        ->assertSee('Outras contas')->assertSee('R$ 450,00');
+
+    // lembra da escolha
+    Livewire::test(Home::class)->assertSet('balanceView', 'patrimonio');
 });
