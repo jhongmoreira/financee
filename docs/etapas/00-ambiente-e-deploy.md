@@ -1,0 +1,54 @@
+# Etapa 0 — Ambiente local e pipeline de deploy
+
+**Objetivo:** validar a hospedagem logo no início, antes de existir código de negócio.
+
+## 0.1 Ambiente local (WSL, sem Docker)
+- Instalar PHP 8.4 + Composer + Laravel installer via `php.new` (sem sudo):
+  `/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.4)"`
+- Extensões necessárias: `pdo_sqlite`, `mbstring`, `intl`, `gd`, `gmp`, `zip`.
+- Node 24 (já instalado) para Vite/Tailwind.
+- `sqlite3` CLI (opcional, para inspeção): `sudo apt install sqlite3`.
+
+## 0.2 Projeto
+- `laravel new financee` (sem starter kit) → Laravel 12, Pest, SQLite.
+- Instalar: `livewire/livewire`, `laravel/fortify`, Tailwind 4 via `@tailwindcss/vite`, Alpine (vem com Livewire).
+- Dev: `barryvdh/laravel-debugbar`, `larastan/larastan`, `laravel/pint`.
+- `config/database.php` (sqlite): `journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`, `foreign_key_constraints=true`.
+- `AppServiceProvider`: `Model::shouldBeStrict(!app()->isProduction())`, `Date::use(CarbonImmutable::class)`, locale `pt_BR`, timezone `America/Sao_Paulo`.
+- Git: `main` + `.gitignore` padrão; criar repositório no GitHub.
+
+## 0.3 Estrutura de pastas no servidor
+```
+~/                         (home da conta Hostoo)
+├─ financee-data/          ← FORA do deploy
+│   ├─ database.sqlite
+│   └─ .env               (copiado manualmente uma vez)
+└─ financee/               ← sincronizado pela integração Git (branch production)
+    └─ public/             ← document root do domínio
+```
+- Laravel lê o `.env` de outro diretório via `$app->useEnvironmentPath()` em `bootstrap/app.php`, controlado pela variável de ambiente `FINANCEE_ENV_PATH` (com fallback para a raiz do projeto em dev).
+- `DB_DATABASE` com caminho absoluto para `financee-data/database.sqlite`.
+- `storage/` precisa ter permissão de escrita. Se o deploy limpar a pasta, avaliar mover para `financee-data/storage` via `$app->useStoragePath()`.
+
+## 0.4 Build de release
+`scripts/release.sh`:
+1. Verifica se a árvore de trabalho está limpa e se os testes passam (`php artisan test`).
+2. Cria um worktree temporário da branch `production`.
+3. Copia o código de `main` (via `git archive`), roda `composer install --no-dev --optimize-autoloader` e `npm ci && npm run build`.
+4. Grava o arquivo `RELEASE` com o hash do commit e a data.
+5. Faz commit e push na branch `production`, que dispara a Hostoo.
+
+## 0.5 Pós-deploy sem SSH
+- Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `migrate --force`, `optimize:clear`, `optimize` e `storage:link`, e grava a nova versão.
+- Agendado em `routes/console.php` com `everyMinute()->withoutOverlapping()`.
+- Cron na Hostoo: `* * * * * /usr/local/bin/ea-php84 ~/financee/artisan schedule:run >> /dev/null 2>&1`. O alias `php` do shell não vale no cron, por isso o caminho é completo.
+- Como há SSH e Composer 2.10 no servidor, os mesmos comandos (`composer install --no-dev`, `migrate --force`, `optimize`) também podem ser rodados manualmente em caso de problema.
+- Fila: `queue:work --stop-when-empty --max-time=50` agendado a cada minuto, porque não há supervisor no compartilhado.
+
+## 0.6 Validação
+- Rota `/up` (health check do Laravel) e uma página "Hello Financee".
+- HTTPS ativo (Let's Encrypt pelo painel).
+- Checklist: [ ] PHP 8.4 web e CLI  [ ] extensões  [ ] deploy por commit  [ ] cron executando o post-deploy  [ ] migrations aplicadas  [ ] SQLite fora do deploy e sobrevivendo a um novo deploy.
+
+## Critério de pronto
+Um commit em `main` → `scripts/release.sh` → em até ~2 minutos a nova versão está no ar, com as migrations aplicadas, sem nenhuma ação manual.
