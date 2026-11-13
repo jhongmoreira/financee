@@ -71,6 +71,8 @@ cat > "$BUILD_DIR/.gitignore" <<'EOF'
 /public/storage
 /storage/*.key
 /bootstrap/cache/*.php
+/public/.user.ini
+/public/php.ini
 EOF
 
 # 4. Commit e push ------------------------------------------------------------

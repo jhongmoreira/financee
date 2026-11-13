@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Gerados pelo cPanel (MultiPHP INI Editor) no servidor
+/public/.user.ini
+/public/php.ini
