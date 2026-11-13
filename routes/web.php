@@ -23,5 +23,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/contas', Accounts\Index::class)->name('accounts');
     Route::get('/cartoes', Cards\Index::class)->name('cards');
+    Route::get('/cartoes/{card}/fatura', Cards\Invoice::class)->name('cards.invoice');
     Route::get('/categorias', Categories\Index::class)->name('categories');
 });

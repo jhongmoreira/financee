@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\InvoicePayment;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use Carbon\CarbonInterface;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 /**
  * Saldos das contas calculados com poucas consultas agregadas:
  *   saldo = saldo inicial + receitas − despesas − transferências enviadas + recebidas
+ *           − pagamentos de fatura de cartão
+ * (compras no cartão não mexem na conta: quem mexe é o pagamento da fatura)
  * Atual: só o que já foi efetivado (paid_at preenchido).
  * Previsto até uma data: inclui também os lançamentos pendentes até aquela data.
  * Resultado memorizado por request; limpo quando um lançamento é salvo/excluído.
@@ -70,11 +73,16 @@ class AccountBalanceService
         $incoming = Transfer::query()->tap($filter)
             ->selectRaw('to_account_id, SUM(amount) AS total')->groupBy('to_account_id')->pluck('total', 'to_account_id');
 
+        $invoicePayments = InvoicePayment::query()
+            ->when($until, fn ($q) => $q->where('paid_at', '<=', $until))
+            ->selectRaw('account_id, SUM(amount) AS total')->groupBy('account_id')->pluck('total', 'account_id');
+
         foreach ($balances as $id => $initial) {
             $balances[$id] = $initial
                 + (int) ($transactions[$id] ?? 0)
                 - (int) ($outgoing[$id] ?? 0)
-                + (int) ($incoming[$id] ?? 0);
+                + (int) ($incoming[$id] ?? 0)
+                - (int) ($invoicePayments[$id] ?? 0);
         }
 
         return $balances;

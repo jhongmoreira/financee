@@ -3,16 +3,18 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use Carbon\CarbonImmutable;
 
 /**
  * Totais do mês (receitas e despesas, efetivadas e previstas) e saldo previsto
  * no fim do mês. Ajustes de saldo e transferências não entram como receita/despesa.
+ * Compras no cartão contam como despesa na data da compra (competência).
  */
 class MonthSummary
 {
-    public function __construct(private AccountBalanceService $balances) {}
+    public function __construct(private AccountBalanceService $balances, private InvoiceService $invoices) {}
 
     /** @return array{income: int, expense: int, income_paid: int, expense_paid: int, balance: int} */
     public function totals(CarbonImmutable $month, ?int $accountId = null): array
@@ -44,10 +46,22 @@ class MonthSummary
         return $this->sumIncluded($this->balances->current());
     }
 
-    /** Saldo geral previsto para o fim do mês (inclui pendentes até lá). */
+    /**
+     * Saldo geral previsto para o fim do mês: inclui pendentes até lá e desconta
+     * o que falta pagar das faturas de cartão que vencem até o fim do mês.
+     */
     public function projectedTotal(CarbonImmutable $month): int
     {
-        return $this->sumIncluded($this->balances->projected($month->endOfMonth()));
+        return $this->sumIncluded($this->balances->projected($month->endOfMonth())) - $this->openInvoicesDueBy($month->endOfMonth());
+    }
+
+    /** Quanto falta pagar das faturas (de cartões ativos) que vencem até a data. */
+    public function openInvoicesDueBy(CarbonImmutable $date): int
+    {
+        $invoices = Invoice::query()->where('due_date', '<=', $date->toDateString())
+            ->whereHas('creditCard', fn ($q) => $q->whereNull('archived_at'))->get();
+
+        return (int) collect($this->invoices->summaries($invoices))->sum(fn (array $s) => max(0, $s['remaining']));
     }
 
     /** @param array<int, int> $balances */

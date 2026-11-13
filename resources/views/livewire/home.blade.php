@@ -37,7 +37,7 @@
             <x-ui.section title="Contas a pagar e receber">
                 <x-ui.card class="divide-y divide-line overflow-hidden">
                     @foreach ($pending as $row)
-                        <div wire:key="pending-{{ $row['id'] }}"><x-ui.entry-row :row="$row" /></div>
+                        <div wire:key="pending-{{ $row['kind'] }}-{{ $row['id'] }}"><x-ui.entry-row :row="$row" :show-pay="$row['kind'] === 'transaction'" /></div>
                     @endforeach
                     <x-ui.list-item icon="clock" icon-class="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300" label="Ver todos os pendentes" :href="route('transactions', ['status' => 'pending'])" />
                 </x-ui.card>
@@ -60,6 +60,24 @@
                 <x-ui.list-item icon="cog-6-tooth" label="Gerenciar contas" :href="route('accounts')" />
             </x-ui.card>
         </x-ui.section>
+
+        @if ($cards->isNotEmpty())
+            <x-ui.section title="Cartões">
+                <x-ui.card class="divide-y divide-line overflow-hidden">
+                    @foreach ($cards as $card)
+                        @php($inv = $currentInvoices[$card->id])
+                        <a href="{{ route('cards.invoice', $card) }}" wire:navigate wire:key="home-card-{{ $card->id }}" class="tap flex items-center gap-3 px-4 py-3 hover:bg-card-hover">
+                            <x-ui.badge-avatar :color="$card->color" icon="credit-card" class="size-9" />
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate font-medium">{{ $card->name }}</span>
+                                <span class="block truncate text-sm text-muted">Fatura {{ $inv->shortLabel() }} · vence {{ $inv->due_date->format('d/m') }}</span>
+                            </span>
+                            <x-ui.money :value="$invoiceSummaries[$inv->id]['total']" class="font-semibold" />
+                        </a>
+                    @endforeach
+                </x-ui.card>
+            </x-ui.section>
+        @endif
 
         @if ($recent->isNotEmpty())
             <x-ui.section title="Últimos lançamentos">
