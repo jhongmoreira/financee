@@ -22,8 +22,8 @@
     table.list th { text-align: left; font-size: 8px; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb; padding: 4px; }
     table.list td { padding: 4px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
     table.list tr.total td { font-weight: bold; border-top: 1px solid #e5e7eb; }
-    .right { text-align: right; }
-    th.right { text-align: right; }
+    /* mesma especificidade de "table.list th" para vencer o alinhamento à esquerda */
+    .right, table.list th.right, table.list td.right { text-align: right; }
     .income { color: #059669; } .expense { color: #e11d48; }
     .bar { height: 7px; background: #e5e7eb; border-radius: 4px; }
     .bar span { display: block; height: 7px; border-radius: 4px; }
