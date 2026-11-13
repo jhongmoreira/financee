@@ -26,7 +26,7 @@
 └─ financee/               ← sincronizado pela integração Git (branch production)
     └─ public/             ← document root do domínio
 ```
-- Laravel lê o `.env` de outro diretório via `$app->useEnvironmentPath()` em `bootstrap/app.php`, controlado pela variável de ambiente `FINANCEE_ENV_PATH` (com fallback para a raiz do projeto em dev).
+- O repositório fica em `~/public_html/financee` (a integração Git da Hostoo clona dentro do public_html). `bootstrap/app.php` usa `~/financee-data` (home do usuário) quando existe `~/financee-data/.env`; um `.htaccess` na raiz do repositório bloqueia o acesso web a tudo fora de `public/`.
 - `DB_DATABASE` com caminho absoluto para `financee-data/database.sqlite`.
 - `storage/` precisa ter permissão de escrita. Se o deploy limpar a pasta, avaliar mover para `financee-data/storage` via `$app->useStoragePath()`.
 
@@ -41,7 +41,7 @@
 ## 0.5 Pós-deploy sem SSH
 - Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `migrate --force`, `optimize:clear`, `optimize` e `storage:link`, e grava a nova versão.
 - Agendado em `routes/console.php` com `everyMinute()->withoutOverlapping()`.
-- Cron na Hostoo: `* * * * * /usr/local/bin/ea-php84 ~/financee/artisan schedule:run >> /dev/null 2>&1`. O alias `php` do shell não vale no cron, por isso o caminho é completo.
+- Cron na Hostoo: `* * * * * /usr/local/bin/ea-php84 ~/public_html/financee/artisan schedule:run >> /dev/null 2>&1`. O alias `php` do shell não vale no cron, por isso o caminho é completo.
 - Como há SSH e Composer 2.10 no servidor, os mesmos comandos (`composer install --no-dev`, `migrate --force`, `optimize`) também podem ser rodados manualmente em caso de problema.
 - Fila: `queue:work --stop-when-empty --max-time=50` agendado a cada minuto, porque não há supervisor no compartilhado.
 
