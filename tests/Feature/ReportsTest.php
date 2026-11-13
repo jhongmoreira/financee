@@ -1,12 +1,15 @@
 <?php
 
+use App\Http\Controllers\ExportController;
 use App\Livewire\Reports\Index;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Models\Transfer;
 use App\Models\User;
 use App\Services\ReportService;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -36,10 +39,45 @@ it('agrupa por categoria principal com subcategorias e compara com o período an
         ->and($rows[0]['children'])->toBe([['name' => 'Mercado', 'total' => 30000], ['name' => 'Alimentação (geral)', 'total' => 10000]]);
 });
 
-it('histórico de saldo usa só efetivados até o fim de cada mês', function () {
-    $rows = app(ReportService::class)->balanceHistory(CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-11-30'));
+it('histórico de saldo mês a mês, total e por conta (só efetivados)', function () {
+    $savings = Account::create(['name' => 'Poupança', 'type' => 'savings', 'color' => '#2563eb', 'initial_balance' => 50000]);
+    $hidden = Account::create(['name' => 'Fora do total', 'type' => 'other', 'color' => '#6b7280', 'initial_balance' => 7000, 'include_in_total' => false]);
+    Transfer::create(['from_account_id' => $this->account->id, 'to_account_id' => $savings->id, 'amount' => 5000, 'date' => '2026-11-10', 'paid_at' => '2026-11-10']);
 
-    expect(array_column($rows, 'balance'))->toBe([80000, 15000]);
+    $history = app(ReportService::class)->balanceHistory(CarbonImmutable::parse('2026-10-01'), CarbonImmutable::parse('2026-11-30'));
+
+    expect(array_column($history['accounts'], 'name'))->toBe(['Fora do total', 'Nubank', 'Poupança'])
+        ->and(array_column($history['months'], 'balance'))->toBe([130000, 65000]) // Nubank + Poupança (fora do total não soma)
+        ->and($history['months'][1]['accounts'])->toEqual([$this->account->id => 10000, $savings->id => 55000, $hidden->id => 7000]);
+});
+
+it('aba saldo mostra gráfico e tabela por conta', function () {
+    Livewire::test(Index::class)->set('tab', 'saldo')->assertSee('Nubank')->assertSee('Total')->assertSee('Saldo efetivado no fim de cada mês');
+});
+
+it('lembra das seções escolhidas para o PDF', function () {
+    Livewire::test(Index::class)->assertSet('sections', array_keys(Index::PDF_SECTIONS))
+        ->set('sections', ['saldo', 'xyz'])->assertSet('sections', ['saldo'])
+        ->call('toggleAllSections')->assertSet('sections', array_keys(Index::PDF_SECTIONS))
+        ->call('toggleAllSections')->assertSet('sections', []);
+
+    Livewire::test(Index::class)->set('sections', ['saldo', 'lancamentos']);
+    Livewire::test(Index::class)->assertSet('sections', ['saldo', 'lancamentos']);
+});
+
+it('o PDF traz só as seções marcadas', function () {
+    $html = fn (string $secoes) => view('exports.report', app(ExportController::class)
+        ->pdfData(Request::create('/', 'GET', ['inicio' => '2026-10-01', 'fim' => '2026-11-30', 'secoes' => $secoes])))->render();
+
+    $onlyBalance = $html('saldo');
+    expect($onlyBalance)->toContain('Evolução do saldo')->toContain('Nubank')
+        ->not->toContain('Despesas por categoria')->not->toContain('Lista de lançamentos')->not->toContain('Saldo geral atual');
+
+    $all = $html('');
+    expect($all)->toContain('Saldo geral atual'); // resumo
+    foreach (array_slice(Index::PDF_SECTIONS, 1) as $title) {
+        expect($all)->toContain(explode(' (', $title)[0]);
+    }
 });
 
 it('exibe todas as abas de relatório', function (string $tab, string $text) {
@@ -48,7 +86,7 @@ it('exibe todas as abas de relatório', function (string $tab, string $text) {
     ['despesas', 'Alimentação'],
     ['receitas', 'Sem receitas no período'],
     ['evolucao', 'Média/mês'],
-    ['saldo', 'Saldo geral efetivado'],
+    ['saldo', 'Saldo efetivado no fim de cada mês'],
     ['cartoes', 'Nenhuma fatura no período'],
 ]);
 
