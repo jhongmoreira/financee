@@ -36,6 +36,12 @@ class AccountBalanceService
         return $this->compute($until->toDateString(), true);
     }
 
+    /** @return array<int, int> saldo efetivado ao fim de uma data (histórico) */
+    public function at(CarbonInterface $date): array
+    {
+        return $this->compute($date->toDateString(), false);
+    }
+
     public function flush(): void
     {
         $this->memo = [];

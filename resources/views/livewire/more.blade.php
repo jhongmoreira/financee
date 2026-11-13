@@ -25,7 +25,7 @@
         <x-ui.section title="Patrimônio e análises">
             <x-ui.card class="divide-y divide-line overflow-hidden">
                 <x-ui.list-item icon="arrow-trending-up" icon-class="bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300" label="Investimentos" description="Ações, FIIs, renda fixa (saldo separado)" :href="route('investments')" />
-                <x-ui.list-item icon="chart-bar" icon-class="bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-300" label="Relatórios" badge="Em breve" />
+                <x-ui.list-item icon="chart-bar" icon-class="bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-300" label="Relatórios" description="Categorias, evolução, saldo, exportar" :href="route('reports')" />
             </x-ui.card>
         </x-ui.section>
 

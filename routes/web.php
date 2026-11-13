@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Livewire\Accounts;
 use App\Livewire\Cards;
@@ -10,6 +11,7 @@ use App\Livewire\More;
 use App\Livewire\Planning;
 use App\Livewire\Profile;
 use App\Livewire\Recurrences;
+use App\Livewire\Reports;
 use App\Livewire\Transactions;
 use Illuminate\Support\Facades\Route;
 
@@ -30,5 +32,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/categorias', Categories\Index::class)->name('categories');
     Route::get('/fixos', Recurrences\Index::class)->name('recurrences');
     Route::get('/investimentos', Investments\Index::class)->name('investments');
+    Route::get('/relatorios', Reports\Index::class)->name('reports');
+    Route::get('/exportar/lancamentos.csv', [ExportController::class, 'csv'])->name('export.csv');
+    Route::get('/exportar/relatorio.pdf', [ExportController::class, 'pdf'])->name('export.pdf');
+    Route::get('/exportar/backup.json', [ExportController::class, 'backup'])->name('export.backup');
     Route::get('/investimentos/ativo/{asset}', Investments\Asset::class)->name('investments.asset');
 });

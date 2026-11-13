@@ -35,6 +35,7 @@
         <x-ui.section title="Segurança">
             <x-ui.card class="divide-y divide-line overflow-hidden" x-data>
                 <x-ui.list-item icon="lock-closed" label="Alterar senha" @click="$dispatch('open-sheet', 'password')" :chevron="true" />
+                <x-ui.list-item icon="arrow-down-tray" label="Exportar todos os meus dados" description="Arquivo JSON com tudo (backup)" :href="route('export.backup')" :navigate="false" />
                 <x-ui.list-item icon="trash" icon-class="bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300" label="Excluir conta"
                     description="Apaga todos os seus dados" @click="$dispatch('open-sheet', 'delete-account')" :chevron="true" />
             </x-ui.card>

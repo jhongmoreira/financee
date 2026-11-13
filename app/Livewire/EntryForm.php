@@ -148,6 +148,10 @@ class EntryForm extends Component
 
     public function updatedKind(): void
     {
+        if (! in_array($this->kind, self::KINDS, true)) {
+            $this->kind = 'expense';
+        }
+
         if ($this->editingId) {
             return;
         }
@@ -216,6 +220,10 @@ class EntryForm extends Component
 
     public function save(bool $another = false): void
     {
+        if (! in_array($this->kind, self::KINDS, true)) {
+            $this->kind = 'expense';
+        }
+
         match ($this->kind) {
             'transfer' => $this->saveTransfer(),
             'card' => $this->saveCard(),
