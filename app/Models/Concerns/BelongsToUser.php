@@ -16,13 +16,13 @@ trait BelongsToUser
     public static function bootBelongsToUser(): void
     {
         static::addGlobalScope('user', function (Builder $query) {
-            if (Auth::hasUser()) {
+            if (Auth::check()) {
                 $query->where($query->qualifyColumn('user_id'), Auth::id());
             }
         });
 
         static::creating(function ($model) {
-            if (! $model->user_id && Auth::hasUser()) {
+            if (! $model->user_id && Auth::check()) {
                 $model->user_id = Auth::id();
             }
         });

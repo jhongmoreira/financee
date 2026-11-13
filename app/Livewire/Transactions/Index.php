@@ -4,6 +4,7 @@ namespace App\Livewire\Transactions;
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\InvoicePayment;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Services\MonthSummary;
@@ -19,7 +20,7 @@ use Livewire\Component;
 /**
  * Extrato do mês: lançamentos e transferências agrupados por dia.
  *
- * @phpstan-type Row array{kind: string, id: int, date: CarbonImmutable, day: string, description: string, subtitle: string, amount: int, neutral?: bool, paid: bool, overdue: bool, icon: string, color: string, type: string}
+ * @phpstan-type Row array{kind: string, id: int, date: CarbonImmutable, day: string, description: string, subtitle: string, amount: int, neutral?: bool, paid: bool, overdue: bool, icon: string, color: string, type: string, href?: string|null}
  */
 #[Title('Lançamentos')]
 class Index extends Component
@@ -102,7 +103,7 @@ class Index extends Component
         if ($this->type !== 'transfer') {
             $categoryIds = $this->categoryIds();
 
-            Transaction::query()->inMonth($month)->with(['category', 'account'])
+            Transaction::query()->inMonth($month)->with(['category', 'account', 'creditCard'])
                 ->when(in_array($this->type, ['income', 'expense'], true), fn ($q) => $q->where('type', $this->type))
                 ->when($this->account !== '', fn ($q) => $q->where('account_id', (int) $this->account))
                 ->when($categoryIds, fn ($q) => $q->whereIn('category_id', $categoryIds))
@@ -116,12 +117,15 @@ class Index extends Component
                         'id' => $t->id,
                         'date' => $t->date,
                         'day' => $t->date->toDateString(),
-                        'description' => $t->description,
-                        'subtitle' => collect([$t->is_adjustment ? 'Ajuste de saldo' : $t->category?->name, $t->account?->name])->filter()->implode(' · '),
+                        'description' => $t->description.($t->installmentLabel() ? ' ('.$t->installmentLabel().')' : ''),
+                        'subtitle' => collect([
+                            $t->is_adjustment ? 'Ajuste de saldo' : ($t->isCard() && $t->type === 'income' ? 'Estorno' : $t->category?->name),
+                            $t->account->name ?? ($t->creditCard ? 'Cartão '.$t->creditCard->name : null),
+                        ])->filter()->implode(' · '),
                         'amount' => $t->signedAmount(),
                         'paid' => $t->isPaid(),
                         'overdue' => $t->isOverdue(),
-                        'icon' => $t->is_adjustment ? 'scale' : ($t->category->icon ?? 'tag'),
+                        'icon' => $t->is_adjustment ? 'scale' : ($t->category->icon ?? ($t->isCard() ? 'credit-card' : 'tag')),
                         'color' => $t->category->color ?? '#6b7280',
                         'type' => $t->type,
                     ]);
@@ -152,6 +156,35 @@ class Index extends Component
                         'icon' => 'arrows-right-left',
                         'color' => '#0284c7',
                         'type' => 'transfer',
+                    ]);
+                });
+        }
+
+        // Pagamentos de fatura (saem da conta; não são despesa por categoria)
+        if (in_array($this->type, ['', 'expense'], true) && $this->category === '' && $this->status !== 'pending') {
+            InvoicePayment::query()->whereBetween('paid_at', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+                ->with(['invoice.creditCard', 'account'])
+                ->when($this->account !== '', fn ($q) => $q->where('account_id', (int) $this->account))
+                ->get()
+                ->each(function (InvoicePayment $p) use ($rows, $search) {
+                    $description = 'Pagamento fatura '.($p->invoice->creditCard->name ?? '');
+                    if ($search !== '' && ! str_contains(mb_strtolower($description), mb_strtolower($search))) {
+                        return;
+                    }
+                    $rows->push([
+                        'kind' => 'payment',
+                        'id' => $p->id,
+                        'date' => $p->paid_at,
+                        'day' => $p->paid_at->toDateString(),
+                        'description' => $description,
+                        'subtitle' => collect([$p->invoice?->shortLabel(), $p->account?->name])->filter()->implode(' · '),
+                        'amount' => -$p->amount,
+                        'paid' => true,
+                        'overdue' => false,
+                        'icon' => 'credit-card',
+                        'color' => $p->invoice->creditCard->color ?? '#7c3aed',
+                        'type' => 'payment',
+                        'href' => $p->invoice ? route('cards.invoice', ['card' => $p->invoice->credit_card_id, 'mes' => $p->invoice->reference_month]) : null,
                     ]);
                 });
         }

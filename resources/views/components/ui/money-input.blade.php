@@ -60,6 +60,10 @@
                :value="display" x-ref="field" @beforeinput="beforeinput($event)" @input="input($event)"
                @focus="$nextTick(() => $event.target.setSelectionRange(99, 99))"
                class="w-full bg-transparent py-3 text-lg font-semibold tabular-nums outline-none" :class="negative && 'text-expense'">
+        <button type="button" x-show="parseInt(cents || 0) !== 0" x-cloak @click="set(0, $refs.field); $refs.field.focus()"
+                class="tap -mr-2 shrink-0 rounded-full p-1.5 text-muted hover:bg-canvas" aria-label="Limpar valor">
+            @svg('heroicon-m-x-circle', 'size-5')
+        </button>
     </div>
     @error($model)
         <p class="mt-1.5 text-sm text-rose-600 dark:text-rose-400">{{ $message }}</p>
