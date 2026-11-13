@@ -13,21 +13,25 @@ use Illuminate\Support\Facades\DB;
  * Lançamentos fixos e parcelamentos em conta.
  *
  * Recorrências são "materializadas": geramos os lançamentos previstos com até
- * 12 meses de antecedência. Assim extrato, previsão, orçamentos e relatórios
+ * antecedência: o restante do ano atual + o ano seguinte inteiro. Assim extrato, previsão, orçamentos e relatórios
  * tratam fixos e avulsos da mesma forma, com consultas simples.
  */
 class RecurrenceService
 {
-    public const HORIZON_MONTHS = 12;
+    /** Gera até 31/12 do ano seguinte (ex.: lançado em nov/2026 → até dez/2027). */
+    public static function horizon(): CarbonImmutable
+    {
+        return CarbonImmutable::today()->addYear()->endOfYear()->startOfDay();
+    }
 
     public function __construct(private InvoiceService $invoices) {}
 
     /** Gera os lançamentos de uma recorrência até o horizonte (ou a data final). */
     public function generate(Recurrence $recurrence, ?CarbonImmutable $until = null): int
     {
-        $until ??= CarbonImmutable::today()->addMonthsNoOverflow(self::HORIZON_MONTHS)->endOfMonth();
+        $until ??= self::horizon();
 
-        // No cartão também 12 meses: as compras fixas futuras aparecem nas faturas e na previsão,
+        // No cartão também: as compras fixas futuras aparecem nas faturas e na previsão,
         // mas só ocupam limite a partir da data da cobrança (ver CreditCard::usedLimit).
 
         if ($recurrence->end_date && $recurrence->end_date->lessThan($until)) {
