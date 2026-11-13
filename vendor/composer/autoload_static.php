@@ -739,6 +739,7 @@ class ComposerStaticInit2025ef88a2358bc0abf9d317966fe371
         'App\\Services\\NotificationService' => __DIR__ . '/../..' . '/app/Services/NotificationService.php',
         'App\\Services\\RecurrenceService' => __DIR__ . '/../..' . '/app/Services/RecurrenceService.php',
         'App\\Services\\ReportService' => __DIR__ . '/../..' . '/app/Services/ReportService.php',
+        'App\\Services\\UserDataReset' => __DIR__ . '/../..' . '/app/Services/UserDataReset.php',
         'App\\Support\\Money' => __DIR__ . '/../..' . '/app/Support/Money.php',
         'App\\Support\\Month' => __DIR__ . '/../..' . '/app/Support/Month.php',
         'App\\Support\\Palette' => __DIR__ . '/../..' . '/app/Support/Palette.php',

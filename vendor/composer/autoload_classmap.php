@@ -61,6 +61,7 @@ return array(
     'App\\Services\\NotificationService' => $baseDir . '/app/Services/NotificationService.php',
     'App\\Services\\RecurrenceService' => $baseDir . '/app/Services/RecurrenceService.php',
     'App\\Services\\ReportService' => $baseDir . '/app/Services/ReportService.php',
+    'App\\Services\\UserDataReset' => $baseDir . '/app/Services/UserDataReset.php',
     'App\\Support\\Money' => $baseDir . '/app/Support/Money.php',
     'App\\Support\\Month' => $baseDir . '/app/Support/Month.php',
     'App\\Support\\Palette' => $baseDir . '/app/Support/Palette.php',
