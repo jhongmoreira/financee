@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Remove contas criadas pelos testes automatizados de ponta a ponta em produção
+ *
  * (e-mail teste-automatico-*@financee.test — o domínio .test é reservado e nunca
  * pertence a um usuário real). Os dados ligados a elas são apagados em cascata.
  */
