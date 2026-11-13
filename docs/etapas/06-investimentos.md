@@ -1,5 +1,7 @@
 # Etapa 6 — Investimentos (controle manual, saldo separado)
 
+> **Status (13/11/2026):** implementada. Valor atual reconstruído pelos movimentos (aporte, resgate, rendimento, atualização de valor). Aporte/resgate/rendimento com conta movimentam o saldo da conta como transferência (não viram receita/despesa) e aparecem no extrato. Investimentos nunca entram no saldo geral nem na previsão.
+
 ## 6.1 Princípio
 O patrimônio investido aparece em um **módulo próprio**. Ele **nunca** soma no saldo geral, no saldo previsto, nos orçamentos nem nos relatórios de receita/despesa. A tela Início mostra apenas um card separado, "Investimentos: R$ X", que pode ser ocultado.
 

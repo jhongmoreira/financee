@@ -25,7 +25,10 @@ final class Palette
     ];
 
     /** Ícones de sistema (tipos de conta, transferência, ajuste) que também aparecem em avatares. */
-    public const ACCOUNT_ICONS = ['building-library', 'banknotes', 'wallet', 'square-3-stack-3d', 'arrows-right-left', 'scale', 'credit-card'];
+    public const ACCOUNT_ICONS = [
+        'building-library', 'banknotes', 'wallet', 'square-3-stack-3d', 'arrows-right-left', 'scale', 'credit-card',
+        'arrow-down-tray', 'arrow-up-tray', 'arrow-path', 'arrow-uturn-left', 'clock', 'bell',
+    ];
 
     /** Garante um ícone existente (evita erro ao renderizar valor inválido). */
     public static function safeIcon(?string $icon): string
