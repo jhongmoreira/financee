@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property array<string, mixed>|null $settings
@@ -16,12 +17,21 @@ use Illuminate\Support\Str;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasPushSubscriptions, Notifiable;
 
     /** Preferências padrão do usuário (coluna JSON "settings"). */
     public const DEFAULT_SETTINGS = [
         'theme' => 'system',          // system | light | dark
         'month_start_day' => 1,       // dia de início do mês financeiro
+    ];
+
+    /** Tipos de aviso e se vêm ligados por padrão. */
+    public const NOTIFICATION_TYPES = [
+        'due' => ['Contas a vencer e vencidas', 'Com antecedência, no dia do vencimento e no dia seguinte se continuar pendente.'],
+        'invoices' => ['Faturas de cartão', 'Quando a fatura fecha e quando está perto de vencer.'],
+        'budget' => ['Orçamentos', 'Ao atingir 80% e 100% do orçamento de uma categoria.'],
+        'forecast' => ['Saldo previsto negativo', 'Se a previsão dos próximos 3 meses ficar negativa (no máximo 1 vez por semana).'],
+        'investments' => ['Lembrete de investimentos', 'No dia 1º, para atualizar o valor dos seus investimentos.'],
     ];
 
     public const THEMES = ['system', 'light', 'dark'];
@@ -64,6 +74,17 @@ class User extends Authenticatable
         $settings = $this->settings ?? [];
         Arr::set($settings, $key, $value);
         $this->update(['settings' => $settings]);
+    }
+
+    public function wantsNotification(string $type): bool
+    {
+        return (bool) Arr::get($this->settings ?? [], 'notifications.'.$type, true);
+    }
+
+    /** Quantos dias antes avisar sobre contas a vencer (0 = só no dia). */
+    public function dueDaysBefore(): int
+    {
+        return max(0, min(7, (int) Arr::get($this->settings ?? [], 'notifications.due_days', 1)));
     }
 
     public function theme(): string

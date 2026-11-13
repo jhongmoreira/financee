@@ -84,6 +84,7 @@ class Home extends Component
             'accounts' => Account::query()->active()->ordered()->with('institution')->get(),
             'cardsCount' => $cards->count(),
             'investedTotal' => $investments->totalValue(),
+            'unread' => auth()->user()?->unreadNotifications()->count() ?? 0,
             'categoryChart' => $this->categoryChart($budgets, $month),
             'historyChart' => $this->historyChart($summary, $month),
             'budgets' => $budgets->forMonth($month)->take(3),

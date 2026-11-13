@@ -28,6 +28,7 @@ final class Palette
     public const ACCOUNT_ICONS = [
         'building-library', 'banknotes', 'wallet', 'square-3-stack-3d', 'arrows-right-left', 'scale', 'credit-card',
         'arrow-down-tray', 'arrow-up-tray', 'arrow-path', 'arrow-uturn-left', 'clock', 'bell',
+        'exclamation-triangle', 'chart-pie',
     ];
 
     /** Garante um ícone existente (evita erro ao renderizar valor inválido). */

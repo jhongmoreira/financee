@@ -1,5 +1,7 @@
 # Etapa 9 — Notificações push
 
+> **Status (13/11/2026):** implementada. Chaves VAPID geradas automaticamente na primeira vez e guardadas em `storage/app/private/vapid.json` (em produção, `~/financee-data/storage`), sem configurar `.env` (com fallback para OpenSSL sem arquivo de configuração). Avisos diários às 09:00 (contas a vencer/vencidas, faturas, saldo previsto negativo semanal, lembrete de investimentos no dia 1º) e alerta de orçamento (80%/100%) ao salvar despesa; tudo deduplicado em `notification_logs`. Push sai pela fila (cron a cada minuto); histórico no app com sino na Início. Validado: criptografia/assinatura VAPID reais e exibição pelo service worker (push simulado no Chromium).
+
 ## 9.1 Infraestrutura
 - Pacote `laravel-notification-channels/webpush` (usa `minishlink/web-push`; requer as extensões `gmp` ou `bcmath` e `openssl`, conferidas na etapa 0).
 - Chaves VAPID geradas uma vez (`php artisan webpush:vapid`) e guardadas no `.env` do servidor.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\NotificationService;
 use App\Services\RecurrenceService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -25,3 +26,10 @@ Artisan::command('recurrences:generate', function (RecurrenceService $service) {
 })->purpose('Gera lançamentos fixos futuros e efetiva débitos automáticos');
 
 Schedule::command('recurrences:generate')->dailyAt('03:10')->withoutOverlapping();
+
+// Avisos do dia (contas a vencer, faturas, saldo negativo, investimentos). Push sai pela fila.
+Artisan::command('notifications:send', function (NotificationService $service) {
+    $this->info($service->runDaily().' aviso(s) enviado(s).');
+})->purpose('Envia os avisos diários (push e lista no app)');
+
+Schedule::command('notifications:send')->dailyAt('09:00')->withoutOverlapping();
