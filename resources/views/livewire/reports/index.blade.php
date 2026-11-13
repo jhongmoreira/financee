@@ -96,13 +96,37 @@
                 @endforeach
             </x-ui.card>
         @elseif ($tab === 'saldo')
-            <x-ui.card class="p-4"><x-ui.chart :config="$chart" height="h-60" /></x-ui.card>
-            <x-ui.card class="divide-y divide-line overflow-hidden text-sm">
-                @foreach (array_reverse($months) as $m)
-                    <div class="flex justify-between px-4 py-2.5"><span>{{ $m['label'] }}</span><x-ui.money :value="$m['balance']" @class(['font-semibold', 'text-expense' => $m['balance'] < 0]) /></div>
-                @endforeach
+            <x-ui.card class="p-4"><x-ui.chart :config="$chart" height="h-72" /></x-ui.card>
+
+            {{-- Tabela mês × conta (rola para o lado no celular) --}}
+            <x-ui.card class="overflow-x-auto">
+                <table class="w-full min-w-max text-sm">
+                    <thead>
+                        <tr class="border-b border-line text-xs text-muted">
+                            <th class="sticky left-0 bg-card px-4 py-2.5 text-left font-semibold">Mês</th>
+                            <th class="px-3 py-2.5 text-right font-semibold text-ink">Total</th>
+                            @foreach ($balanceAccounts as $acc)
+                                <th class="px-3 py-2.5 text-right font-semibold">
+                                    <span class="inline-flex items-center gap-1.5"><span class="size-2 rounded-full" style="background-color: {{ $acc['color'] }}"></span>{{ $acc['name'] }}</span>
+                                </th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line">
+                        @foreach (array_reverse($months) as $m)
+                            <tr wire:key="bal-{{ $m['label'] }}">
+                                <td class="sticky left-0 bg-card px-4 py-2.5 font-medium">{{ $m['label'] }}</td>
+                                <td class="px-3 py-2.5 text-right"><x-ui.money :value="$m['balance']" @class(['font-semibold', 'text-expense' => $m['balance'] < 0]) /></td>
+                                @foreach ($balanceAccounts as $acc)
+                                    @php($v = $m['accounts'][$acc['id']] ?? 0)
+                                    <td class="px-3 py-2.5 text-right"><x-ui.money :value="$v" @class(['text-muted' => $v === 0, 'text-expense' => $v < 0]) /></td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </x-ui.card>
-            <p class="px-1 text-xs text-muted">Saldo geral efetivado no fim de cada mês (contas incluídas no total; investimentos ficam de fora).</p>
+            <p class="px-1 text-xs text-muted">Saldo efetivado no fim de cada mês (o mês atual mostra o saldo de hoje). O total soma as contas marcadas "incluir no saldo geral"; investimentos ficam de fora.</p>
         @elseif ($tab === 'cartoes')
             @if ($chart)
                 <x-ui.card class="p-4"><x-ui.chart :config="$chart" height="h-60" /></x-ui.card>
@@ -122,15 +146,37 @@
     </div>
 
     <x-ui.bottom-sheet name="export" title="Exportar">
-        <div class="space-y-3">
-            <p class="text-sm text-muted">Período: {{ $rangeLabel }}</p>
+        <div class="space-y-4">
+            <p class="text-sm text-muted">Período: <strong class="text-ink">{{ $rangeLabel }}</strong> (o mesmo escolhido na tela)</p>
+
+            <div>
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-sm font-semibold">O que incluir no PDF</p>
+                    <button type="button" class="text-sm font-medium text-brand" wire:click="toggleAllSections">
+                        {{ count($sections) === count(\App\Livewire\Reports\Index::PDF_SECTIONS) ? 'Desmarcar todas' : 'Marcar todas' }}
+                    </button>
+                </div>
+                <div class="divide-y divide-line rounded-2xl border border-line">
+                    @foreach (\App\Livewire\Reports\Index::PDF_SECTIONS as $key => $label)
+                        <label wire:key="sec-{{ $key }}" class="flex cursor-pointer items-center gap-3 px-4 py-3">
+                            <input type="checkbox" value="{{ $key }}" wire:model.live="sections" class="size-5 rounded accent-emerald-600">
+                            <span class="text-sm">{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+
+            @if ($sections)
+                <a href="{{ route('export.pdf', $pdfQuery) }}" class="tap flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-white hover:bg-brand-strong">
+                    @svg('heroicon-o-document-arrow-down', 'size-5') Gerar PDF
+                </a>
+            @else
+                <p class="rounded-xl bg-canvas px-4 py-3 text-center text-sm text-muted">Marque pelo menos uma seção para gerar o PDF.</p>
+            @endif
+
             <a href="{{ route('export.csv', $exportQuery) }}" class="tap flex items-center gap-3 rounded-2xl border border-line p-4 hover:bg-card-hover">
                 <x-ui.badge-avatar color="#16a34a" icon="document-text" class="size-10" />
-                <span><span class="block font-medium">Planilha (CSV)</span><span class="block text-sm text-muted">Lançamentos do período, abre no Excel</span></span>
-            </a>
-            <a href="{{ route('export.pdf', $exportQuery) }}" class="tap flex items-center gap-3 rounded-2xl border border-line p-4 hover:bg-card-hover">
-                <x-ui.badge-avatar color="#dc2626" icon="document-text" class="size-10" />
-                <span><span class="block font-medium">Relatório (PDF)</span><span class="block text-sm text-muted">Resumo, categorias e lançamentos</span></span>
+                <span><span class="block font-medium">Planilha (CSV)</span><span class="block text-sm text-muted">Lista de lançamentos do período, abre no Excel</span></span>
             </a>
         </div>
     </x-ui.bottom-sheet>

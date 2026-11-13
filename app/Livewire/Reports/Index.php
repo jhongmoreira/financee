@@ -4,7 +4,9 @@ namespace App\Livewire\Reports;
 
 use App\Services\ReportService;
 use App\Support\Month;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -40,8 +42,25 @@ class Index extends Component
     #[Url(as: 'regime', except: 'competencia')]
     public string $regime = 'competencia';
 
+    /** Seções que podem entrar no PDF (na ordem em que aparecem). */
+    public const PDF_SECTIONS = [
+        'resumo' => 'Resumo (receitas, despesas e balanço)',
+        'saldo' => 'Evolução do saldo (total e por conta)',
+        'despesas' => 'Despesas por categoria',
+        'receitas' => 'Receitas por categoria',
+        'cartoes' => 'Faturas dos cartões',
+        'investimentos' => 'Investimentos',
+        'lancamentos' => 'Lista de lançamentos',
+    ];
+
+    /** @var list<string> */
+    public array $sections = [];
+
     public function mount(): void
     {
+        $saved = Auth::user()?->setting('export_sections');
+        $this->sections = is_array($saved) ? array_values(array_intersect(array_keys(self::PDF_SECTIONS), $saved)) : array_keys(self::PDF_SECTIONS);
+
         $this->tab = array_key_exists($this->tab, self::TABS) ? $this->tab : 'despesas';
         $this->preset = array_key_exists($this->preset, self::PRESETS) ? $this->preset : 'month';
         $this->regime = in_array($this->regime, ['competencia', 'caixa'], true) ? $this->regime : 'competencia';
@@ -50,9 +69,22 @@ class Index extends Component
     #[On('entry-saved')]
     public function refresh(): void {}
 
+    public function toggleAllSections(): void
+    {
+        $this->sections = count($this->sections) === count(self::PDF_SECTIONS) ? [] : array_keys(self::PDF_SECTIONS);
+        Auth::user()?->updateSetting('export_sections', $this->sections);
+    }
+
     /** Os valores vêm do navegador: normaliza qualquer coisa inesperada. */
     public function updated(string $property): void
     {
+        if (str_starts_with($property, 'sections')) {
+            $this->sections = array_values(array_intersect(array_keys(self::PDF_SECTIONS), $this->sections));
+            Auth::user()?->updateSetting('export_sections', $this->sections);
+
+            return;
+        }
+
         $this->mount();
     }
 
@@ -69,6 +101,7 @@ class Index extends Component
         $data = [
             'rangeLabel' => $start->format('d/m/Y').' a '.$end->format('d/m/Y'),
             'exportQuery' => ['inicio' => $start->toDateString(), 'fim' => $end->toDateString(), 'regime' => $this->regime],
+            'pdfQuery' => ['inicio' => $start->toDateString(), 'fim' => $end->toDateString(), 'regime' => $this->regime, 'secoes' => implode(',', $this->sections)],
         ];
 
         $data += match ($this->tab) {
@@ -124,21 +157,29 @@ class Index extends Component
     }
 
     /**
-     * @param  list<array<string, mixed>>  $months
+     * @param  array{accounts: list<array{id: int, name: string, color: string, in_total: bool}>, months: list<array{month: CarbonImmutable, label: string, balance: int, accounts: array<int, int>}>}  $history
      * @return array<string, mixed>
      */
-    private function balanceData(array $months): array
+    private function balanceData(array $history): array
     {
+        $months = $history['months'];
+        $labels = array_map(fn ($m) => ucfirst($m['month']->locale('pt_BR')->translatedFormat('M/y')), $months);
+
+        $datasets = [[
+            'label' => 'Total', 'data' => array_column($months, 'balance'),
+            'borderColor' => 'var(--ink)', 'backgroundColor' => 'var(--ink)', 'borderWidth' => 3, 'tension' => 0.3, 'pointRadius' => 3,
+        ]];
+        foreach ($history['accounts'] as $account) {
+            $datasets[] = [
+                'label' => $account['name'], 'data' => array_map(fn ($m) => $m['accounts'][$account['id']] ?? 0, $months),
+                'borderColor' => $account['color'], 'backgroundColor' => $account['color'], 'borderWidth' => 2, 'tension' => 0.3, 'pointRadius' => 2,
+            ];
+        }
+
         return [
             'months' => $months,
-            'chart' => [
-                'type' => 'line',
-                'legend' => false,
-                'data' => ['labels' => array_map(fn ($m) => ucfirst($m['month']->locale('pt_BR')->translatedFormat('M/y')), $months), 'datasets' => [[
-                    'label' => 'Saldo geral', 'data' => array_column($months, 'balance'),
-                    'borderColor' => 'var(--brand)', 'backgroundColor' => 'var(--brand-soft)', 'fill' => true, 'tension' => 0.3, 'pointRadius' => 3,
-                ]]],
-            ],
+            'balanceAccounts' => $history['accounts'],
+            'chart' => ['type' => 'line', 'legend' => true, 'data' => ['labels' => $labels, 'datasets' => $datasets]],
         ];
     }
 
