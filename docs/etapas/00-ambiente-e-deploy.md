@@ -19,16 +19,18 @@
 
 ## 0.3 Estrutura de pastas no servidor
 ```
-~/                         (home da conta Hostoo)
-├─ financee-data/          ← FORA do deploy
+/home/mv8f1v6j/                (home da conta Hostoo)
+├─ financee-data/              ← FORA do deploy e fora da web
+│   ├─ .env                   (criado uma vez via SSH)
 │   ├─ database.sqlite
-│   └─ .env               (copiado manualmente uma vez)
-└─ financee/               ← sincronizado pela integração Git (branch production)
-    └─ public/             ← document root do domínio
+│   └─ storage/               (logs, cache, sessões, uploads)
+└─ public_html/
+    └─ financee/               ← integração Git (branch production); .htaccess bloqueia tudo
+        └─ public/             ← document root de financee.jgmoreira.com.br
 ```
 - O repositório fica em `~/public_html/financee` (a integração Git da Hostoo clona dentro do public_html). `bootstrap/app.php` usa `~/financee-data` (home do usuário) quando existe `~/financee-data/.env`; um `.htaccess` na raiz do repositório bloqueia o acesso web a tudo fora de `public/`.
 - `DB_DATABASE` com caminho absoluto para `financee-data/database.sqlite`.
-- `storage/` precisa ter permissão de escrita. Se o deploy limpar a pasta, avaliar mover para `financee-data/storage` via `$app->useStoragePath()`.
+- Lições: o cPanel altera `public/.htaccess` e cria `public/.user.ini`/`php.ini`; o bloco dele está espelhado no repositório e os .ini são ignorados. Se o painel voltar a mexer, o deploy da Hostoo falha com "arquivos alterados manualmente" (rodar `git status` no servidor).
 
 ## 0.4 Build de release
 `scripts/release.sh`:
@@ -48,7 +50,7 @@
 ## 0.6 Validação
 - Rota `/up` (health check do Laravel) e uma página "Hello Financee".
 - HTTPS ativo (Let's Encrypt pelo painel).
-- Checklist: [ ] PHP 8.4 web e CLI  [ ] extensões  [ ] deploy por commit  [ ] cron executando o post-deploy  [ ] migrations aplicadas  [ ] SQLite fora do deploy e sobrevivendo a um novo deploy.
+- Checklist (13/11/2026): [x] PHP 8.4 web e CLI  [x] extensões  [x] deploy por commit  [x] cron cadastrado  [x] migrations aplicadas  [x] dados fora do deploy e da web (403 confirmado)  [ ] deploy 100% automático via cron
 
 ## Critério de pronto
 Um commit em `main` → `scripts/release.sh` → em até ~2 minutos a nova versão está no ar, com as migrations aplicadas, sem nenhuma ação manual.
