@@ -27,10 +27,8 @@ class RecurrenceService
     {
         $until ??= CarbonImmutable::today()->addMonthsNoOverflow(self::HORIZON_MONTHS)->endOfMonth();
 
-        // No cartão, gerar compras futuras demais consumiria o limite: só até o fim do mês seguinte.
-        if ($recurrence->credit_card_id) {
-            $until = $until->min(CarbonImmutable::today()->addMonthNoOverflow()->endOfMonth());
-        }
+        // No cartão também 12 meses: as compras fixas futuras aparecem nas faturas e na previsão,
+        // mas só ocupam limite a partir da data da cobrança (ver CreditCard::usedLimit).
 
         if ($recurrence->end_date && $recurrence->end_date->lessThan($until)) {
             $until = $recurrence->end_date;

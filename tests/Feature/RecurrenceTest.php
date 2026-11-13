@@ -98,13 +98,30 @@ it('encerrar remove só os pendentes futuros', function () {
         ->and($r->fresh()->end_date->toDateString())->toBe('2026-11-14');
 });
 
-it('assinatura no cartão só gera até o mês seguinte', function () {
+it('assinatura no cartão gera 12 meses e só ocupa limite a partir da cobrança', function () {
     $card = CreditCard::create(['name' => 'C', 'brand' => 'visa', 'limit' => 100000, 'closing_day' => 3, 'due_day' => 10, 'color' => '#7c3aed']);
     $r = recurrence(['credit_card_id' => $card->id, 'account_id' => null, 'amount' => 3990, 'start_date' => '2026-11-05']);
     $this->service->generate($r);
 
-    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(2) // 05/11 e 05/12
-        ->and(Transaction::whereNotNull('invoice_id')->count())->toBe(2);
+    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(13) // nov/26 .. nov/27
+        ->and(Transaction::where('recurrence_id', $r->id)->whereNull('invoice_id')->count())->toBe(0)
+        ->and($card->usedLimit())->toBe(3990); // só a de 05/11 (já cobrada)
+});
+
+it('fixo no cartão começando no futuro aparece na fatura certa', function () {
+    // Caso relatado: em novembro, fixo a partir de 10/02 num cartão que fecha dia 8 e vence dia 15
+    $card = CreditCard::create(['name' => 'LuizaCred', 'brand' => 'visa', 'limit' => 500000, 'closing_day' => 8, 'due_day' => 15, 'color' => '#2563eb']);
+    $r = recurrence(['credit_card_id' => $card->id, 'account_id' => null, 'amount' => 5990, 'start_date' => '2027-02-10']);
+    $this->service->generate($r);
+
+    $first = Transaction::where('recurrence_id', $r->id)->orderBy('date')->with('invoice')->first();
+    expect($first->date->toDateString())->toBe('2027-02-10')
+        ->and($first->invoice->reference_month)->toBe('2027-03') // 10/02 é depois do fechamento (08/02): fatura de março
+        ->and($card->usedLimit())->toBe(0);
+
+    // e entra na previsão do mês da fatura
+    $months = collect(app(ForecastService::class)->months(6))->keyBy(fn ($m) => $m['month']->format('Y-m'));
+    expect($months['2027-03']['invoices'])->toBe(5990);
 });
 
 it('cria lançamento fixo pelo formulário', function () {

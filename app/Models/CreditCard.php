@@ -74,10 +74,15 @@ class CreditCard extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    /** Limite utilizado = compras − estornos − pagamentos (inclui parcelas futuras). */
+    /**
+     * Limite utilizado = compras − estornos − pagamentos.
+     * Parcelas futuras ocupam limite (como nos bancos); compras FIXAS futuras (assinaturas)
+     * só ocupam a partir da data da cobrança.
+     */
     public function usedLimit(): int
     {
         $purchases = (int) $this->transactions()
+            ->where(fn ($q) => $q->whereNull('recurrence_id')->orWhere('date', '<=', today()->toDateString()))
             ->selectRaw("COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE -amount END), 0) AS total")
             ->value('total');
 
