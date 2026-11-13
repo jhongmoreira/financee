@@ -15,9 +15,9 @@
 
         <x-ui.section title="Cadastros">
             <x-ui.card class="divide-y divide-line overflow-hidden">
-                <x-ui.list-item icon="building-library" label="Contas" badge="Em breve" />
-                <x-ui.list-item icon="credit-card" icon-class="bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300" label="Cartões de crédito" badge="Em breve" />
-                <x-ui.list-item icon="tag" icon-class="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300" label="Categorias" badge="Em breve" />
+                <x-ui.list-item icon="building-library" label="Contas" description="Bancos, poupança e carteira" :href="route('accounts')" />
+                <x-ui.list-item icon="credit-card" icon-class="bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300" label="Cartões de crédito" description="Limites, fechamento e vencimento" :href="route('cards')" />
+                <x-ui.list-item icon="tag" icon-class="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300" label="Categorias" description="Receitas e despesas" :href="route('categories')" />
                 <x-ui.list-item icon="arrow-path" icon-class="bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-300" label="Lançamentos fixos" badge="Em breve" />
             </x-ui.card>
         </x-ui.section>
