@@ -38,7 +38,7 @@
 2. Cria um worktree temporário da branch `production`.
 3. Copia o código de `main` (via `git archive`), roda `composer install --no-dev --optimize-autoloader` e `npm ci && npm run build`.
 4. Grava o arquivo `RELEASE` com o hash do commit e a data.
-5. Faz commit e push na branch `production`, que dispara a Hostoo.
+5. Faz commit numa branch `release/<versão>` e abre uma **Pull Request para `production`** (via `gh`). O deploy só acontece quando a PR é aprovada e mergeada.
 
 ## 0.5 Pós-deploy sem SSH
 - Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `migrate --force`, `optimize:clear`, `optimize` e `storage:link`, e grava a nova versão.
@@ -50,7 +50,7 @@
 ## 0.6 Validação
 - Rota `/up` (health check do Laravel) e uma página "Hello Financee".
 - HTTPS ativo (Let's Encrypt pelo painel).
-- Checklist (13/11/2026): [x] PHP 8.4 web e CLI  [x] extensões  [x] deploy por commit  [x] cron cadastrado  [x] migrations aplicadas  [x] dados fora do deploy e da web (403 confirmado)  [ ] deploy 100% automático via cron
+- Checklist (13/11/2026): [x] PHP 8.4 web e CLI  [x] extensões  [x] deploy por commit  [x] cron cadastrado  [x] migrations aplicadas  [x] dados fora do deploy e da web (403 confirmado)  [x] deploy automático (commit → Hostoo → cron aplica release)
 
 ## Critério de pronto
 Um commit em `main` → `scripts/release.sh` → em até ~2 minutos a nova versão está no ar, com as migrations aplicadas, sem nenhuma ação manual.

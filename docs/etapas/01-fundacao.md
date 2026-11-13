@@ -1,5 +1,7 @@
 # Etapa 1 — Fundação: autenticação, perfil, app shell, tema e PWA
 
+> **Status (13/11/2026):** implementada. Fica para as próximas etapas: criação de categorias/conta padrão no cadastro (Etapa 2) e configuração de SMTP em produção para o e-mail de "Esqueci a senha".
+
 ## 1.1 Autenticação (Fortify headless)
 - Funcionalidades: cadastro, login ("lembrar de mim"), logout, recuperação de senha por e-mail, verificação de e-mail (opcional via config) e troca de senha.
 - Telas Blade próprias, no visual do app (sem layout de site).

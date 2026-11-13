@@ -1,7 +1,18 @@
 <?php
 
+use App\Http\Controllers\ServiceWorkerController;
+use App\Livewire\More;
+use App\Livewire\Profile;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+// PWA
+Route::get('/sw.js', ServiceWorkerController::class)->name('sw');
+Route::view('/offline', 'offline')->name('offline');
+
+Route::middleware('auth')->group(function () {
+    Route::view('/', 'pages.home')->name('home');
+    Route::view('/lancamentos', 'pages.transactions')->name('transactions');
+    Route::view('/planejamento', 'pages.planning')->name('planning');
+    Route::get('/mais', More::class)->name('more');
+    Route::get('/perfil', Profile::class)->name('profile');
 });

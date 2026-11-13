@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 #
-# Gera um build de produção a partir da branch main e publica na branch
-# "production", que é a branch acompanhada pela integração Git da Hostoo.
+# Gera um build de produção a partir da branch main e abre uma PULL REQUEST
+# para a branch "production" (acompanhada pela integração Git da Hostoo).
+# Nada é enviado direto para production: o deploy só acontece quando a PR
+# é aprovada e mergeada no GitHub.
 # A branch production contém vendor/ e public/build/ prontos, porque a
 # Hostoo apenas copia os arquivos (não roda composer nem npm).
 #
-# Uso: scripts/release.sh            (testes + build + push)
+# Uso: scripts/release.sh            (testes + build + PR para production)
 #      scripts/release.sh --no-push  (só gera o commit local, para conferir)
 #
 set -euo pipefail
@@ -33,19 +35,17 @@ info "Compilando assets (Vite)"
 npm ci --no-audit --no-fund --silent
 npm run build >/dev/null
 
-# 2. Worktree da branch production -----------------------------------------
+# 2. Worktree a partir da production publicada ------------------------------
 BUILD_DIR="$(mktemp -d)"
-trap 'git worktree remove --force "$BUILD_DIR" 2>/dev/null || rm -rf "$BUILD_DIR"' EXIT
+BRANCH="release/${RELEASE}"
+trap 'git worktree remove --force "$BUILD_DIR" 2>/dev/null || rm -rf "$BUILD_DIR"; git branch -D "$BRANCH" >/dev/null 2>&1 || true' EXIT
 
-git fetch origin production 2>/dev/null || true
-if git show-ref --verify --quiet refs/heads/production; then
-    git worktree add -f "$BUILD_DIR" production >/dev/null
-elif git show-ref --verify --quiet refs/remotes/origin/production; then
-    git worktree add -f -b production "$BUILD_DIR" origin/production >/dev/null
-else
-    git worktree add -f --detach "$BUILD_DIR" >/dev/null
-    git -C "$BUILD_DIR" checkout --orphan production >/dev/null
-fi
+git fetch -q origin production main
+git worktree add -q --detach "$BUILD_DIR" origin/production
+git -C "$BUILD_DIR" checkout -q -b "$BRANCH"
+
+# Commit de main incluído no último release (para o resumo da PR)
+PREV_COMMIT="$(git log -1 --grep='main@' --format=%B origin/production | grep -o 'main@[0-9a-f]*' | head -1 | cut -d@ -f2 || true)"
 
 # Limpa tudo (menos .git) e extrai o código commitado de main
 find "$BUILD_DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
@@ -83,10 +83,43 @@ if git -C "$BUILD_DIR" diff --cached --quiet; then
 fi
 git -C "$BUILD_DIR" commit -q -m "Release ${RELEASE} (main@${COMMIT})"
 
-if [[ $PUSH -eq 1 ]]; then
-    info "Enviando branch production"
-    git -C "$BUILD_DIR" push -q origin production
-    info "Release ${RELEASE} publicado. O cron aplica as migrations em até 1 minuto."
-else
-    info "Commit local criado na branch production (sem push)."
+if [[ $PUSH -eq 0 ]]; then
+    info "Commit local criado em ${BRANCH} (sem push)."
+    trap 'git worktree remove --force "$BUILD_DIR" 2>/dev/null || true' EXIT
+    exit 0
 fi
+
+info "Enviando ${BRANCH} e abrindo PR para production"
+git -C "$BUILD_DIR" push -q -u origin "$BRANCH"
+
+REPO_URL="$(gh repo view --json url -q .url)"
+if [[ -n "$PREV_COMMIT" ]]; then
+    CHANGES="$(git log --format='- %h %s' "${PREV_COMMIT}..${COMMIT}")"
+    COMPARE="${REPO_URL}/compare/${PREV_COMMIT}...${COMMIT}"
+else
+    CHANGES="$(git log -10 --format='- %h %s' "$COMMIT")"
+    COMPARE="${REPO_URL}/commits/${COMMIT}"
+fi
+
+BODY="$(cat <<MD
+## Release ${RELEASE}
+
+Build de produção gerado a partir de \`main@${COMMIT}\` (testes passando).
+
+### Alterações desde o último release
+${CHANGES:-"- (sem novos commits de código)"}
+
+**Diff do código-fonte (legível):** ${COMPARE}
+
+> O diff desta PR inclui \`vendor/\` e \`public/build/\`; revise o código pelo link acima.
+
+### Ao mergear
+A Hostoo atualiza o servidor e o cron aplica migrations e caches em até 1 minuto.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+MD
+)"
+
+PR_URL="$(gh pr create --base production --head "$BRANCH" --title "Release ${RELEASE} (main@${COMMIT})" --body "$BODY")"
+info "PR aberta: ${PR_URL}"
+info "O deploy acontece quando a PR for aprovada e mergeada."
