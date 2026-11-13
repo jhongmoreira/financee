@@ -36,6 +36,8 @@
             <x-ui.card class="divide-y divide-line overflow-hidden" x-data>
                 <x-ui.list-item icon="lock-closed" label="Alterar senha" @click="$dispatch('open-sheet', 'password')" :chevron="true" />
                 <x-ui.list-item icon="arrow-down-tray" label="Exportar todos os meus dados" description="Arquivo JSON com tudo (backup)" :href="route('export.backup')" :navigate="false" />
+                <x-ui.list-item icon="arrow-path" icon-class="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300" label="Recomeçar do zero"
+                    description="Apaga lançamentos, contas, cartões e tudo mais; mantém seu login" @click="$dispatch('open-sheet', 'reset-data')" :chevron="true" />
                 <x-ui.list-item icon="trash" icon-class="bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300" label="Excluir conta"
                     description="Apaga todos os seus dados" @click="$dispatch('open-sheet', 'delete-account')" :chevron="true" />
             </x-ui.card>
@@ -48,6 +50,20 @@
             <x-ui.input label="Nova senha" name="password" type="password" wire:model="password" autocomplete="new-password" hint="Mínimo de 8 caracteres." />
             <x-ui.input label="Confirmar nova senha" name="password_confirmation" type="password" wire:model="password_confirmation" autocomplete="new-password" />
             <x-ui.button class="w-full">Alterar senha</x-ui.button>
+        </form>
+    </x-ui.bottom-sheet>
+
+    <x-ui.bottom-sheet name="reset-data" title="Recomeçar do zero">
+        <form wire:submit="resetData" class="space-y-4">
+            <div class="rounded-2xl bg-amber-500/10 p-4 text-sm">
+                <p class="font-semibold text-amber-800 dark:text-amber-200">Serão apagados permanentemente:</p>
+                <p class="mt-1 text-amber-800/90 dark:text-amber-200/90">lançamentos, transferências, contas, cartões e faturas, parcelamentos, lançamentos fixos, orçamentos, investimentos, categorias e o histórico de avisos.</p>
+                <p class="mt-3 font-semibold text-amber-800 dark:text-amber-200">Continuam:</p>
+                <p class="mt-1 text-amber-800/90 dark:text-amber-200/90">seu login, foto, tema e notificações ativadas. As categorias padrão e a conta "Carteira" são criadas de novo.</p>
+            </div>
+            <p class="text-sm text-muted">Esta ação <strong class="text-ink">não pode ser desfeita</strong>. Se quiser guardar uma cópia, use antes "Exportar todos os meus dados". Digite sua senha para confirmar.</p>
+            <x-ui.input label="Senha" name="reset_password" type="password" wire:model="reset_password" autocomplete="current-password" />
+            <x-ui.button class="w-full !bg-amber-600 hover:!bg-amber-700">Apagar tudo e recomeçar</x-ui.button>
         </form>
     </x-ui.bottom-sheet>
 

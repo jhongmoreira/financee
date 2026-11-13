@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\User;
+use App\Services\UserDataReset;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,8 @@ class Profile extends Component
     public string $password_confirmation = '';
 
     public string $delete_password = '';
+
+    public string $reset_password = '';
 
     public function mount(): void
     {
@@ -100,6 +103,18 @@ class Profile extends Component
         $this->reset('current_password', 'password', 'password_confirmation');
         $this->dispatch('close-sheet', 'password');
         $this->dispatch('toast', message: 'Senha alterada.');
+    }
+
+    /** Apaga todos os dados financeiros e recria a estrutura inicial (mantém o login). */
+    public function resetData(UserDataReset $reset): void
+    {
+        $this->validate(['reset_password' => ['required', 'string', 'current_password:web']], attributes: ['reset_password' => 'senha']);
+
+        $reset->reset($this->user());
+
+        $this->reset('reset_password');
+        session()->flash('toast', 'Pronto! Seus dados foram apagados e você está começando do zero.');
+        $this->redirectRoute('home', navigate: true);
     }
 
     public function deleteAccount(): void
