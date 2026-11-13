@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\RecurrenceService;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 /*
@@ -16,3 +18,10 @@ Schedule::command('app:post-deploy')
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
+
+// Lançamentos fixos: estende a geração (12 meses à frente) e efetiva débitos automáticos.
+Artisan::command('recurrences:generate', function (RecurrenceService $service) {
+    $this->info($service->runDaily().' lançamento(s) fixo(s) gerado(s).');
+})->purpose('Gera lançamentos fixos futuros e efetiva débitos automáticos');
+
+Schedule::command('recurrences:generate')->dailyAt('03:10')->withoutOverlapping();

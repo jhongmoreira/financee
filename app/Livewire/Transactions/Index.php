@@ -119,6 +119,7 @@ class Index extends Component
                         'day' => $t->date->toDateString(),
                         'description' => $t->description.($t->installmentLabel() ? ' ('.$t->installmentLabel().')' : ''),
                         'subtitle' => collect([
+                            $t->recurrence_id ? 'Fixo' : null,
                             $t->is_adjustment ? 'Ajuste de saldo' : ($t->isCard() && $t->type === 'income' ? 'Estorno' : $t->category?->name),
                             $t->account->name ?? ($t->creditCard ? 'Cartão '.$t->creditCard->name : null),
                         ])->filter()->implode(' · '),

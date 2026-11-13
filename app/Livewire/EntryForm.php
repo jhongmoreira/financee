@@ -6,9 +6,11 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\CreditCard;
 use App\Models\InstallmentPlan;
+use App\Models\Recurrence;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Services\InvoiceService;
+use App\Services\RecurrenceService;
 use App\Support\Month;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -66,7 +68,19 @@ class EntryForm extends Component
 
     public ?string $invoice_ref = null;
 
-    public string $scope = 'this'; // this | future | all (edição de parcelas)
+    public string $scope = 'this'; // this | future | all (edição de parcelas/fixos)
+
+    // Repetição (novo lançamento)
+    public string $repeat = 'none'; // none | fixed | installments
+
+    public string $frequency = 'monthly';
+
+    public ?string $end_date = null;
+
+    public bool $auto_mark_paid = false;
+
+    #[Locked]
+    public ?int $recurrenceId = null; // lançamento fixo em edição
 
     public function mount(): void
     {
@@ -74,24 +88,25 @@ class EntryForm extends Component
     }
 
     #[On('open-entry')]
-    public function open(string $kind = 'expense', ?string $date = null, ?string $card = null): void
+    public function open(string $kind = 'expense', ?string $date = null, ?string $card = null, ?string $repeat = null): void
     {
         $this->resetValidation();
-        $this->reset('editingId', 'planId', 'amount', 'description', 'category_id', 'to_account_id', 'notes', 'showMore',
-            'installments', 'installment_mode', 'is_refund', 'scope');
+        $this->reset('editingId', 'planId', 'recurrenceId', 'amount', 'description', 'category_id', 'to_account_id', 'notes', 'showMore',
+            'installments', 'installment_mode', 'is_refund', 'scope', 'repeat', 'frequency', 'end_date', 'auto_mark_paid');
         $this->kind = in_array($kind, self::KINDS, true) ? $kind : 'expense';
         $this->date = $date ?: today()->toDateString();
         $this->paid = $this->date <= today()->toDateString();
         $this->account_id ??= $this->defaultAccountId();
         $this->credit_card_id = $card ?: ($this->credit_card_id ?? $this->defaultCardId());
         $this->invoice_ref = $this->defaultInvoiceRef();
+        $this->repeat = in_array($repeat, ['fixed', 'installments'], true) ? $repeat : 'none';
     }
 
     #[On('edit-entry')]
     public function edit(string $kind, int $id): void
     {
         $this->resetValidation();
-        $this->reset('planId', 'showMore', 'installments', 'installment_mode', 'is_refund', 'scope', 'to_account_id', 'category_id');
+        $this->reset('planId', 'recurrenceId', 'showMore', 'installments', 'installment_mode', 'is_refund', 'scope', 'to_account_id', 'category_id', 'repeat');
 
         if ($kind === 'transfer') {
             $transfer = Transfer::findOrFail($id);
@@ -114,13 +129,14 @@ class EntryForm extends Component
             $this->paid = $transaction->isPaid();
             $this->notes = (string) $transaction->notes;
             $this->showMore = $this->notes !== '';
+            $this->recurrenceId = $transaction->recurrence_id;
+            $this->planId = $transaction->installment_plan_id;
 
             if ($transaction->isCard()) {
                 $this->kind = 'card';
                 $this->credit_card_id = (string) $transaction->credit_card_id;
                 $this->is_refund = $transaction->type === 'income';
                 $this->invoice_ref = $transaction->invoice?->reference_month;
-                $this->planId = $transaction->installment_plan_id;
             } else {
                 $this->kind = $transaction->type;
                 $this->account_id = $transaction->account_id ? (string) $transaction->account_id : null;
@@ -152,6 +168,16 @@ class EntryForm extends Component
     public function updatedCreditCardId(): void
     {
         $this->invoice_ref = $this->defaultInvoiceRef();
+    }
+
+    public function updatedRepeat(string $value): void
+    {
+        if ($value === 'installments' && $this->installments < 2) {
+            $this->installments = 2;
+        }
+        if ($value !== 'installments' && $this->kind !== 'card') {
+            $this->installments = 1;
+        }
     }
 
     public function updatedIsRefund(): void
@@ -200,14 +226,14 @@ class EntryForm extends Component
         $this->dispatch('toast', message: $this->editingId ? 'Lançamento atualizado.' : 'Lançamento salvo.');
 
         if ($another) {
-            $this->reset('editingId', 'planId', 'amount', 'description', 'notes', 'installments', 'is_refund');
+            $this->reset('editingId', 'planId', 'recurrenceId', 'amount', 'description', 'notes', 'installments', 'is_refund', 'repeat', 'end_date');
             $this->resetValidation();
 
             return;
         }
 
         $this->dispatch('close-sheet', 'entry-form');
-        $this->reset('editingId', 'planId');
+        $this->reset('editingId', 'planId', 'recurrenceId');
     }
 
     public function delete(): void
@@ -215,6 +241,11 @@ class EntryForm extends Component
         if ($this->editingId) {
             if ($this->kind === 'transfer') {
                 Transfer::findOrFail($this->editingId)->delete();
+            } elseif ($this->recurrenceId && $this->scope === 'future') {
+                $transaction = Transaction::findOrFail($this->editingId);
+                $recurrence = Recurrence::findOrFail($this->recurrenceId);
+                $transaction->delete();
+                app(RecurrenceService::class)->stop($recurrence, $transaction->date);
             } else {
                 $this->scopedQuery()->get()->each->delete();
                 $this->cleanupPlan();
@@ -261,6 +292,7 @@ class EntryForm extends Component
                 ->pluck('description')->unique()->take(40)->values()->all() : [],
             'invoiceOptions' => $this->kind === 'card' ? $this->invoiceOptions($invoices) : [],
             'plan' => $this->planId ? InstallmentPlan::find($this->planId) : null,
+            'recurrence' => $this->recurrenceId ? Recurrence::find($this->recurrenceId) : null,
             'isToday' => $this->date === today()->toDateString(),
             'isYesterday' => $this->date === today()->subDay()->toDateString(),
         ]);
@@ -285,9 +317,73 @@ class EntryForm extends Component
         if ($this->editingId) {
             $transaction = Transaction::findOrFail($this->editingId);
             $data['type'] = $transaction->type;
+
+            if ($this->planId && $this->scope !== 'this') {
+                // Parcelamento em conta: descrição/categoria/valor/conta no escopo; data e situação só nesta.
+                $common = array_intersect_key($data, array_flip(['description', 'category_id', 'amount', 'account_id', 'notes']));
+                $this->scopedQuery()->get()->each->update($common);
+                $transaction->update(['date' => $data['date'], 'paid_at' => $data['paid_at']]);
+
+                return;
+            }
+
             $transaction->update($data);
-        } else {
-            Transaction::create($data);
+
+            if ($this->recurrenceId && $this->scope === 'future') {
+                app(RecurrenceService::class)->updateFrom(Recurrence::findOrFail($this->recurrenceId), $transaction->date->addDay(), [
+                    'description' => $data['description'], 'amount' => $data['amount'],
+                    'category_id' => $data['category_id'], 'account_id' => $data['account_id'],
+                ]);
+            }
+
+            return;
+        }
+
+        if ($this->repeat === 'fixed') {
+            $this->createRecurrence($data + ['account_id' => $data['account_id']]);
+
+            return;
+        }
+
+        if ($this->repeat === 'installments' && $this->installments > 1) {
+            $this->validate(['installments' => ['integer', 'between:2,360'], 'installment_mode' => [Rule::in(['total', 'parcel'])]]);
+            $total = $this->installment_mode === 'parcel' ? $data['amount'] * $this->installments : $data['amount'];
+            app(RecurrenceService::class)->createAccountInstallments($this->kind, $data['description'], $total, $this->installments,
+                CarbonImmutable::parse($data['date']), (int) $data['account_id'], $data['category_id'], $data['paid_at'] !== null, $data['notes']);
+
+            return;
+        }
+
+        Transaction::create($data);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function createRecurrence(array $data): void
+    {
+        $this->validate([
+            'frequency' => ['required', Rule::in(array_keys(Recurrence::FREQUENCIES))],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date'],
+        ], attributes: ['end_date' => 'data final']);
+
+        $recurrence = Recurrence::create([
+            'type' => $data['type'],
+            'description' => $data['description'],
+            'amount' => $data['amount'],
+            'category_id' => $data['category_id'] ?? null,
+            'account_id' => $data['account_id'] ?? null,
+            'credit_card_id' => $data['credit_card_id'] ?? null,
+            'frequency' => $this->frequency,
+            'start_date' => $data['date'],
+            'end_date' => $this->end_date ?: null,
+            'auto_mark_paid' => $this->auto_mark_paid,
+        ]);
+
+        app(RecurrenceService::class)->generate($recurrence);
+
+        // A 1ª ocorrência segue o "Pago" do formulário.
+        if (($data['paid_at'] ?? null) && ! $recurrence->credit_card_id) {
+            Transaction::query()->where('recurrence_id', $recurrence->id)->whereDate('date', $data['date'])
+                ->update(['paid_at' => $data['paid_at']]);
         }
     }
 
@@ -308,6 +404,15 @@ class EntryForm extends Component
         $card = CreditCard::findOrFail($data['credit_card_id']);
         $invoices = app(InvoiceService::class);
 
+        if (! $this->editingId && $this->repeat === 'fixed' && ! $this->is_refund) {
+            $this->createRecurrence([
+                'type' => 'expense', 'description' => trim($data['description']), 'amount' => $data['amount'],
+                'category_id' => $data['category_id'], 'credit_card_id' => $card->id, 'date' => $data['date'],
+            ]);
+
+            return;
+        }
+
         if (! $this->editingId) {
             $total = $this->installment_mode === 'parcel' ? $data['amount'] * $data['installments'] : $data['amount'];
             $invoices->createPurchase($card, trim($data['description']), $data['category_id'], CarbonImmutable::parse($data['date']),
@@ -327,6 +432,16 @@ class EntryForm extends Component
             // Parcelas: altera descrição/categoria/valor no escopo escolhido; datas e faturas ficam.
             $this->scopedQuery()->get()->each->update($common);
             InstallmentPlan::whereKey($this->planId)->update(['description' => $common['description'], 'category_id' => $common['category_id']]);
+
+            return;
+        }
+
+        if ($this->recurrenceId && $this->scope === 'future') {
+            $transaction = Transaction::findOrFail($this->editingId);
+            $transaction->update($common);
+            app(RecurrenceService::class)->updateFrom(Recurrence::findOrFail($this->recurrenceId), $transaction->date->addDay(), [
+                'description' => $common['description'], 'amount' => $common['amount'], 'category_id' => $common['category_id'],
+            ]);
 
             return;
         }

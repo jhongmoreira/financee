@@ -6,7 +6,9 @@ use App\Livewire\Cards;
 use App\Livewire\Categories;
 use App\Livewire\Home;
 use App\Livewire\More;
+use App\Livewire\Planning;
 use App\Livewire\Profile;
+use App\Livewire\Recurrences;
 use App\Livewire\Transactions;
 use Illuminate\Support\Facades\Route;
 
@@ -17,7 +19,7 @@ Route::view('/offline', 'offline')->name('offline');
 Route::middleware('auth')->group(function () {
     Route::get('/', Home::class)->name('home');
     Route::get('/lancamentos', Transactions\Index::class)->name('transactions');
-    Route::view('/planejamento', 'pages.planning')->name('planning');
+    Route::get('/planejamento', Planning::class)->name('planning');
     Route::get('/mais', More::class)->name('more');
     Route::get('/perfil', Profile::class)->name('profile');
 
@@ -25,4 +27,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/cartoes', Cards\Index::class)->name('cards');
     Route::get('/cartoes/{card}/fatura', Cards\Invoice::class)->name('cards.invoice');
     Route::get('/categorias', Categories\Index::class)->name('categories');
+    Route::get('/fixos', Recurrences\Index::class)->name('recurrences');
 });
