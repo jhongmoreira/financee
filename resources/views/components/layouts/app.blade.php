@@ -23,7 +23,7 @@
                 <span class="text-lg font-bold tracking-tight">{{ config('app.name') }}</span>
             </a>
 
-            <button type="button" x-data @click="$dispatch('open-sheet', 'new-entry')"
+            <button type="button" x-data @click="$dispatch('open-sheet', 'entry-form'); $dispatch('open-entry', { kind: 'expense' })"
                     class="tap mb-6 flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white shadow-sm hover:bg-brand-strong">
                 @svg('heroicon-o-plus', 'size-5') Novo lançamento
             </button>
@@ -63,7 +63,7 @@
             @foreach ($nav as $i => $item)
                 @if ($i === 2)
                     <div class="flex justify-center">
-                        <button type="button" x-data @click="$dispatch('open-sheet', 'new-entry')" aria-label="Novo lançamento"
+                        <button type="button" x-data @click="$dispatch('open-sheet', 'entry-form'); $dispatch('open-entry', { kind: 'expense' })" aria-label="Novo lançamento"
                                 class="tap -mt-7 grid size-14 place-items-center rounded-full bg-brand text-white shadow-lg shadow-emerald-900/30 ring-4 ring-canvas">
                             @svg('heroicon-o-plus', 'size-7')
                         </button>
@@ -79,23 +79,8 @@
         </div>
     </nav>
 
-    {{-- Novo lançamento (implementado na Etapa 3) --}}
-    <x-ui.bottom-sheet name="new-entry" title="Novo lançamento">
-        <div class="grid grid-cols-2 gap-3">
-            @foreach ([
-                ['Despesa', 'arrow-trending-down', 'text-expense'],
-                ['Receita', 'arrow-trending-up', 'text-income'],
-                ['Despesa no cartão', 'credit-card', 'text-violet-500'],
-                ['Transferência', 'arrows-right-left', 'text-sky-500'],
-            ] as [$label, $icon, $color])
-                <button type="button" @click="$store.toast.show('Disponível em breve.', 'info'); close()"
-                        class="tap flex flex-col items-start gap-3 rounded-2xl border border-line bg-canvas p-4 text-left">
-                    <span class="grid size-10 place-items-center rounded-full bg-card {{ $color }}">@svg('heroicon-o-'.$icon, 'size-5')</span>
-                    <span class="font-semibold">{{ $label }}</span>
-                </button>
-            @endforeach
-        </div>
-    </x-ui.bottom-sheet>
+    {{-- Formulário de lançamento (abre pelo "+" ou ao tocar num lançamento) --}}
+    <livewire:entry-form />
 
     {{-- Instruções de instalação no iPhone --}}
     <x-ui.bottom-sheet name="ios-install" title="Instalar no iPhone">
