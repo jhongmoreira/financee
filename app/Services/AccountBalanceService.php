@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\InvestmentMovement;
 use App\Models\InvoicePayment;
 use App\Models\Transaction;
 use App\Models\Transfer;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Auth;
 /**
  * Saldos das contas calculados com poucas consultas agregadas:
  *   saldo = saldo inicial + receitas − despesas − transferências enviadas + recebidas
- *           − pagamentos de fatura de cartão
+ *           − pagamentos de fatura de cartão − aportes em investimentos + resgates/rendimentos
  * (compras no cartão não mexem na conta: quem mexe é o pagamento da fatura)
  * Atual: só o que já foi efetivado (paid_at preenchido).
  * Previsto até uma data: inclui também os lançamentos pendentes até aquela data.
@@ -77,12 +78,19 @@ class AccountBalanceService
             ->when($until, fn ($q) => $q->where('paid_at', '<=', $until))
             ->selectRaw('account_id, SUM(amount) AS total')->groupBy('account_id')->pluck('total', 'account_id');
 
+        // Investimentos: aporte sai da conta, resgate/rendimento entram (movimentação, não receita/despesa)
+        $investments = InvestmentMovement::query()->whereNotNull('account_id')
+            ->when($until, fn ($q) => $q->where('date', '<=', $until))
+            ->selectRaw("account_id, SUM(CASE WHEN type = 'contribution' THEN -amount WHEN type IN ('withdrawal', 'income') THEN amount ELSE 0 END) AS total")
+            ->groupBy('account_id')->pluck('total', 'account_id');
+
         foreach ($balances as $id => $initial) {
             $balances[$id] = $initial
                 + (int) ($transactions[$id] ?? 0)
                 - (int) ($outgoing[$id] ?? 0)
                 + (int) ($incoming[$id] ?? 0)
-                - (int) ($invoicePayments[$id] ?? 0);
+                - (int) ($invoicePayments[$id] ?? 0)
+                + (int) ($investments[$id] ?? 0);
         }
 
         return $balances;

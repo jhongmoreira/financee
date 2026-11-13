@@ -79,6 +79,20 @@
             </x-ui.section>
         @endif
 
+        @if ($hasInvestments)
+            <div class="px-4">
+                <a href="{{ route('investments') }}" wire:navigate class="tap flex items-center gap-3 rounded-2xl border border-line bg-card p-4 hover:bg-card-hover">
+                    <x-ui.badge-avatar color="#4f46e5" icon="arrow-trending-up" class="size-10" />
+                    <span class="min-w-0 flex-1">
+                        <span class="block font-medium">Investimentos</span>
+                        <span class="block text-xs text-muted">Separado do saldo geral</span>
+                    </span>
+                    <x-ui.money :value="$investedTotal" class="font-semibold" />
+                    @svg('heroicon-o-chevron-right', 'size-5 text-muted')
+                </a>
+            </div>
+        @endif
+
         @if ($recent->isNotEmpty())
             <x-ui.section title="Últimos lançamentos">
                 <x-ui.card class="divide-y divide-line overflow-hidden">
