@@ -42,6 +42,12 @@ class Index extends Component
         }
     }
 
+    /** Os valores vêm do navegador: garante uma aba válida. */
+    public function updatedTab(): void
+    {
+        $this->mount();
+    }
+
     public function create(?int $parentId = null): void
     {
         $this->resetForm();
@@ -95,6 +101,7 @@ class Index extends Component
             $category->update($data);
             $message = 'Categoria atualizada.';
         } else {
+            $this->mount(); // garante tipo válido
             Category::create($data + ['type' => $this->tab]);
             $message = 'Categoria criada.';
         }
