@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use App\Services\AccountBalanceService;
 use Carbon\CarbonImmutable;
@@ -23,7 +24,7 @@ class InvoicePayment extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'integer', 'carried_amount' => 'integer', 'paid_at' => 'immutable_date'];
+        return ['amount' => 'integer', 'carried_amount' => 'integer', 'paid_at' => DateOnly::class];
     }
 
     protected static function booted(): void

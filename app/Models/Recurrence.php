@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,9 +45,9 @@ class Recurrence extends Model
     {
         return [
             'amount' => 'integer',
-            'start_date' => 'immutable_date',
-            'end_date' => 'immutable_date',
-            'generated_until' => 'immutable_date',
+            'start_date' => DateOnly::class,
+            'end_date' => DateOnly::class,
+            'generated_until' => DateOnly::class,
             'auto_mark_paid' => 'boolean',
         ];
     }

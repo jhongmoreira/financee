@@ -167,5 +167,5 @@ it('prevê o saldo mês a mês com fixos e faturas', function () {
         ->and($months[1])->toMatchArray(['income' => 50000, 'expense' => 30000, 'invoices' => 10000, 'end' => 80000])
         ->and($months[2]['end'])->toBe(100000);
 
-    Livewire::test(Planning::class)->assertSee('Previsão de saldo')->assertSee('R$ 700,00');
+    Livewire::test(Planning::class)->set('tab', 'previsao')->assertSee('Saldo geral ao fim de cada mês')->assertSee('R$ 700,00');
 });

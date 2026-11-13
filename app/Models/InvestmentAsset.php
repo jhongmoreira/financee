@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -39,8 +40,8 @@ class InvestmentAsset extends Model
     {
         return [
             'current_value' => 'integer',
-            'current_value_at' => 'immutable_date',
-            'maturity_date' => 'immutable_date',
+            'current_value_at' => DateOnly::class,
+            'maturity_date' => DateOnly::class,
             'quantity' => 'decimal:8',
             'archived_at' => 'datetime',
         ];

@@ -1,5 +1,7 @@
 # Etapa 7 — Orçamentos, dashboard e gráficos
 
+> **Status (13/11/2026):** implementada. Orçamento por categoria principal (inclui subcategorias, conta e cartão pela data da compra), padrão para todos os meses ou só um mês, copiar do mês anterior e sugestão pela média de 3 meses. Gráficos com Chart.js carregado sob demanda (sem animação, cores do tema). Início: rosca de despesas do mês, orçamentos mais próximos do limite, receitas × despesas de 6 meses. Ficaram de fora: reordenar/ocultar cards da Início e cache do dashboard (consultas já são agregadas e rápidas). Correção importante junto: datas passaram a ser gravadas só como AAAA-MM-DD (cast DateOnly), corrigindo lançamentos do último dia do mês fora dos filtros.
+
 ## 7.1 Orçamentos (`budgets`)
 `id, user_id, category_id, amount, month (YYYY-MM)?` (null = padrão de todos os meses; um registro com mês sobrescreve o padrão).
 - Orçamento em categoria pai inclui as subcategorias.
