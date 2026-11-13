@@ -11,6 +11,7 @@
 <link rel="icon" href="/icons/logo.svg" type="image/svg+xml">
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<x-layouts.splash />
 <meta name="theme-color" content="#f3f4f6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
