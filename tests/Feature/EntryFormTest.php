@@ -113,3 +113,12 @@ it('não edita lançamento de outro usuário', function () {
     expect(fn () => Livewire::test(EntryForm::class)->call('edit', 'transaction', $t->id))
         ->toThrow(ModelNotFoundException::class);
 });
+
+it('ignora tipo inválido vindo do navegador', function () {
+    Livewire::test(EntryForm::class)->call('open', 'expense')
+        ->set('kind', 'hackeado')->assertSet('kind', 'expense')
+        ->set('amount', 100)->set('description', 'X')->set('account_id', (string) $this->account->id)
+        ->call('save')->assertHasNoErrors();
+
+    expect(Transaction::first()->type)->toBe('expense');
+});

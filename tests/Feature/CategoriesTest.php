@@ -66,3 +66,10 @@ it('exibe a tela', function () {
     Category::create(['type' => 'expense', 'name' => 'Mercadinho', 'icon' => 'shopping-cart', 'color' => '#ea580c']);
     $this->get('/categorias')->assertOk()->assertSee('Mercadinho');
 });
+
+it('ignora aba inválida vinda do navegador', function () {
+    Livewire::test(Index::class)->set('tab', 'xyz')->assertSet('tab', 'expense')
+        ->call('create')->set('name', 'Teste')->call('save')->assertHasNoErrors();
+
+    expect(Category::where('name', 'Teste')->value('type'))->toBe('expense');
+});

@@ -1,5 +1,7 @@
 # Etapa 8 — Relatórios e exportação
 
+> **Status (13/11/2026):** implementada. Relatórios: despesas e receitas por categoria (com subcategorias e variação vs. período anterior), evolução mensal, histórico de saldo e faturas por cartão; períodos prontos ou personalizado (até 5 anos); regime por data do lançamento ou do pagamento. Exportação: CSV (Excel pt-BR), PDF (dompdf, fonte com subsetting ~30 KB) e backup completo em JSON (Perfil). Exportações são geradas na hora por streaming; a fila para exportações grandes não foi necessária. Extrato de fatura em PDF ficou para depois.
+
 ## 8.1 Relatórios (Mais → Relatórios)
 Filtro comum: período (mês, trimestre, ano ou personalizado), contas, cartões, categorias e regime (**caixa**, pela data do pagamento, ou **competência**, pela data da compra/lançamento).
 
