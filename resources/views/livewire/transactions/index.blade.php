@@ -4,6 +4,11 @@
     <x-ui.app-bar title="Lançamentos" large>
         <x-slot:actions>
             <x-ui.privacy-toggle />
+            <button type="button" wire:click="toggleOrder" class="tap rounded-full p-2 text-muted hover:bg-card"
+                    aria-label="{{ $order === 'asc' ? 'Mostrar mais recentes primeiro' : 'Mostrar em ordem do início do mês' }}"
+                    title="{{ $order === 'asc' ? 'Ordem: do início do mês' : 'Ordem: mais recentes primeiro' }}">
+                @svg($order === 'asc' ? 'heroicon-o-bars-arrow-down' : 'heroicon-o-bars-arrow-up', 'size-6')
+            </button>
             <button type="button" x-on:click="$dispatch('open-sheet', 'filters')" class="tap relative rounded-full p-2 text-muted hover:bg-card" aria-label="Filtros">
                 @svg('heroicon-o-funnel', 'size-6')
                 @if ($activeFilters)

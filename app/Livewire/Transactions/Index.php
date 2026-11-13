@@ -16,6 +16,7 @@ use App\Support\Month;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -47,8 +48,12 @@ class Index extends Component
     #[Url(as: 'busca', except: '')]
     public string $search = '';
 
+    /** Ordem da lista: asc (do 1º dia ao último — padrão) | desc. Salva nas preferências do usuário. */
+    public string $order = 'asc';
+
     public function mount(): void
     {
+        $this->order = Auth::user()?->setting('statement_order') === 'desc' ? 'desc' : 'asc';
         $this->month = Month::key(Month::parse($this->month));
     }
 
@@ -60,6 +65,12 @@ class Index extends Component
     public function nextMonth(): void
     {
         $this->month = Month::key(Month::parse($this->month)->addMonth());
+    }
+
+    public function toggleOrder(): void
+    {
+        $this->order = $this->order === 'asc' ? 'desc' : 'asc';
+        Auth::user()?->updateSetting('statement_order', $this->order);
     }
 
     public function clearFilters(): void
@@ -269,7 +280,10 @@ class Index extends Component
                 });
         }
 
-        return $rows->sortByDesc(fn (array $row) => $row['date']->toDateString().($row['paid'] ? '1' : '0').sprintf('%010d', $row['id']))->values();
+        // Por data; dentro do mesmo dia, na ordem em que foram lançados
+        $key = fn (array $row) => $row['date']->toDateString().sprintf('%010d', $row['id']);
+
+        return ($this->order === 'desc' ? $rows->sortByDesc($key) : $rows->sortBy($key))->values();
     }
 
     /** @return list<int> categoria escolhida + subcategorias */
