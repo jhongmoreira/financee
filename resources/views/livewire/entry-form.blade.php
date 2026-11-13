@@ -96,15 +96,43 @@
                     </div>
                 @endif
 
-                {{-- Descrição --}}
-                <div>
-                    <x-ui.input name="description" wire:model.blur="description" list="entry-suggestions" autocomplete="off" maxlength="120"
-                        :placeholder="$kind === 'transfer' ? 'Descrição (opcional)' : 'Descrição'" aria-label="Descrição" />
-                    <datalist id="entry-suggestions">
-                        @foreach ($suggestions as $suggestion)
-                            <option value="{{ $suggestion }}"></option>
-                        @endforeach
-                    </datalist>
+                {{-- Descrição com sugestões das mais recentes (até 5) --}}
+                <div class="relative" wire:key="desc-{{ md5(json_encode($suggestions)) }}"
+                     x-data="{
+                        items: @js($suggestions),
+                        q: '',
+                        open: false,
+                        norm(t) { return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() },
+                        get matches() {
+                            const q = this.norm(this.q);
+                            const list = q ? this.items.filter(i => this.norm(i).includes(q) && this.norm(i) !== q) : this.items;
+                            return list.slice(0, 5);
+                        },
+                        pick(value) {
+                            this.q = value;
+                            this.$refs.desc.querySelector('input').value = value;
+                            this.open = false;
+                            $wire.set('description', value);
+                        },
+                     }"
+                     x-init="q = $refs.desc.querySelector('input').value"
+                     x-on:click.outside="open = false">
+                    <div x-ref="desc" x-on:focusin="q = $event.target.value; open = true" x-on:input="q = $event.target.value; open = true"
+                         x-on:keydown.escape="open = false">
+                        <x-ui.input name="description" wire:model.blur="description" autocomplete="off" maxlength="120"
+                            :placeholder="$kind === 'transfer' ? 'Descrição (opcional)' : 'Descrição'" aria-label="Descrição" />
+                    </div>
+                    <div x-show="open && matches.length" x-cloak x-transition.opacity.duration.100ms
+                         class="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-line bg-card shadow-lg">
+                        <p class="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted" x-text="q ? 'Sugestões' : 'Recentes'"></p>
+                        <template x-for="item in matches" :key="item">
+                            <button type="button" x-on:mousedown.prevent x-on:click="pick(item)"
+                                    class="tap flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-card-hover">
+                                @svg('heroicon-o-clock', 'size-4 shrink-0 text-muted')
+                                <span class="truncate" x-text="item"></span>
+                            </button>
+                        </template>
+                    </div>
                 </div>
 
                 @if ($kind === 'transfer')

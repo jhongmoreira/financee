@@ -3,9 +3,11 @@
 use App\Livewire\EntryForm;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\CreditCard;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Models\User;
+use App\Services\InvoiceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Livewire\Livewire;
@@ -121,4 +123,26 @@ it('ignora tipo inválido vindo do navegador', function () {
         ->call('save')->assertHasNoErrors();
 
     expect(Transaction::first()->type)->toBe('expense');
+});
+
+it('sugere as descrições recentes do mesmo tipo e meio, sem repetir', function () {
+    $card = CreditCard::create(['name' => 'C', 'brand' => 'visa', 'limit' => 100000, 'closing_day' => 3, 'due_day' => 10, 'color' => '#7c3aed']);
+    foreach (['Padaria' => '2026-11-01', 'Farmácia' => '2026-11-10', 'padaria ' => '2026-11-12', 'Mercado' => '2026-11-14'] as $desc => $date) {
+        Transaction::factory()->create(['description' => $desc, 'account_id' => $this->account->id, 'date' => $date]);
+    }
+    Transaction::factory()->income()->create(['description' => 'Salário', 'account_id' => $this->account->id]);
+    app(InvoiceService::class)->createPurchase($card, 'Netflix', null, CarbonImmutable::parse('2026-11-05'), 3990);
+
+    $expense = Livewire::test(EntryForm::class)->call('open', 'expense')->viewData('suggestions');
+    expect($expense)->toBe(['Mercado', 'padaria ', 'Farmácia']);
+
+    expect(Livewire::test(EntryForm::class)->call('open', 'income')->viewData('suggestions'))->toBe(['Salário'])
+        ->and(Livewire::test(EntryForm::class)->call('open', 'card')->viewData('suggestions'))->toBe(['Netflix']);
+});
+
+it('lançamentos futuros não entram nas descrições recentes', function () {
+    Transaction::factory()->create(['description' => 'Café', 'account_id' => $this->account->id, 'date' => '2026-11-14']);
+    Transaction::factory()->pending()->create(['description' => 'Aluguel futuro', 'account_id' => $this->account->id, 'date' => '2027-05-10']);
+
+    expect(Livewire::test(EntryForm::class)->call('open', 'expense')->viewData('suggestions'))->toBe(['Café']);
 });
