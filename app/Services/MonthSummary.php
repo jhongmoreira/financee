@@ -10,7 +10,8 @@ use Carbon\CarbonImmutable;
 /**
  * Totais do mês (receitas e despesas, efetivadas e previstas) e saldo previsto
  * no fim do mês. Ajustes de saldo e transferências não entram como receita/despesa.
- * Compras no cartão contam como despesa na data da compra (competência).
+ * Compras no cartão contam como despesa no mês do VENCIMENTO da fatura (estornos abatem),
+ * como no Organizze: é quando o dinheiro sai.
  */
 class MonthSummary
 {
@@ -22,10 +23,14 @@ class MonthSummary
         $row = Transaction::query()->inMonth($month)->withoutAdjustments()
             ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
             ->selectRaw("
-                COALESCE(SUM(CASE WHEN type = 'income' THEN amount END), 0) AS income,
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount END), 0) AS expense,
-                COALESCE(SUM(CASE WHEN type = 'income' AND paid_at IS NOT NULL THEN amount END), 0) AS income_paid,
-                COALESCE(SUM(CASE WHEN type = 'expense' AND paid_at IS NOT NULL THEN amount END), 0) AS expense_paid
+                COALESCE(SUM(CASE WHEN credit_card_id IS NULL AND type = 'income' THEN amount END), 0) AS income,
+                COALESCE(SUM(CASE WHEN credit_card_id IS NULL AND type = 'expense' THEN amount
+                                  WHEN credit_card_id IS NOT NULL AND type = 'expense' THEN amount
+                                  WHEN credit_card_id IS NOT NULL AND type = 'income' THEN -amount END), 0) AS expense,
+                COALESCE(SUM(CASE WHEN credit_card_id IS NULL AND type = 'income' AND paid_at IS NOT NULL THEN amount END), 0) AS income_paid,
+                COALESCE(SUM(CASE WHEN credit_card_id IS NULL AND type = 'expense' AND paid_at IS NOT NULL THEN amount
+                                  WHEN credit_card_id IS NOT NULL AND type = 'expense' THEN amount
+                                  WHEN credit_card_id IS NOT NULL AND type = 'income' THEN -amount END), 0) AS expense_paid
             ")->first();
 
         $income = (int) $row?->getAttribute('income');

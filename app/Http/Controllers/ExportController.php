@@ -38,7 +38,7 @@ class ExportController
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Data', 'Descrição', 'Categoria', 'Subcategoria', 'Conta/Cartão', 'Tipo', 'Valor', 'Situação', 'Parcela', 'Observação'], ';');
+            fputcsv($out, ['Data', 'Descrição', 'Categoria', 'Subcategoria', 'Conta/Cartão', 'Fatura', 'Tipo', 'Valor', 'Situação', 'Parcela', 'Observação'], ';');
 
             $query->chunk(500, function ($transactions) use ($out) {
                 foreach ($transactions as $t) {
@@ -51,7 +51,8 @@ class ExportController
                         $root->name ?? ($t->is_adjustment ? 'Ajuste de saldo' : ''),
                         $category && $category->parent_id ? $category->name : '',
                         $t->account->name ?? ($t->creditCard ? 'Cartão '.$t->creditCard->name : ''),
-                        $t->type === 'income' ? 'Receita' : 'Despesa',
+                        $t->invoice ? $t->invoice->shortLabel().' (vence '.$t->invoice->due_date->format('d/m/Y').')' : '',
+                        $t->isCard() && $t->type === 'income' ? 'Estorno' : ($t->type === 'income' ? 'Receita' : 'Despesa'),
                         number_format($t->signedAmount() / 100, 2, ',', ''),
                         $t->isPaid() ? 'Efetivado' : 'Pendente',
                         (string) $t->installmentLabel(),
