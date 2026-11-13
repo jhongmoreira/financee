@@ -3,6 +3,7 @@
 use App\Services\NotificationService;
 use App\Services\RecurrenceService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 /*
@@ -33,3 +34,15 @@ Artisan::command('notifications:send', function (NotificationService $service) {
 })->purpose('Envia os avisos diários (push e lista no app)');
 
 Schedule::command('notifications:send')->dailyAt('09:00')->withoutOverlapping();
+
+// Manutenção do SQLite: atualiza estatísticas (semanal) e compacta o arquivo (mensal).
+Artisan::command('app:db-maintenance {--vacuum}', function () {
+    DB::statement('PRAGMA optimize');
+    if ($this->option('vacuum')) {
+        DB::statement('VACUUM');
+    }
+    $this->info('Banco otimizado.');
+})->purpose('PRAGMA optimize (e VACUUM com --vacuum)');
+
+Schedule::command('app:db-maintenance')->weeklyOn(0, '04:00')->withoutOverlapping();
+Schedule::command('app:db-maintenance --vacuum')->monthlyOn(1, '04:30')->withoutOverlapping();

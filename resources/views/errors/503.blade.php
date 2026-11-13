@@ -1,0 +1,5 @@
+@extends('errors.layout')
+@section('code', 'EM MANUTENÇÃO')
+@section('title', 'Voltamos já')
+@section('message', 'O Financee está sendo atualizado. Leva só alguns instantes.')
+@section('button', 'Tentar novamente')

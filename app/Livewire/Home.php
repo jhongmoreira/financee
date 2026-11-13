@@ -68,7 +68,7 @@ class Home extends Component
             ]);
 
         // Pendências: vencidas + próximos 7 dias
-        $pending = Transaction::query()->with(['category', 'account'])->whereNull('paid_at')->whereNull('credit_card_id')
+        $pending = Transaction::query()->with(['category', 'account', 'creditCard'])->whereNull('paid_at')->whereNull('credit_card_id')
             ->where('date', '<=', today()->addDays(7)->toDateString())
             ->orderBy('date')->limit(6)->get();
 

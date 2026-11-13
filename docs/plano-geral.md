@@ -1,5 +1,7 @@
 # Financee — Plano Geral
 
+> **Status (13/11/2026):** etapas 0–10 concluídas e em produção. Operação e pendências: [go-live.md](go-live.md).
+
 PWA de finanças pessoais, mobile-first, inspirado em Organizze/Mobills.
 
 ## 1. Decisões fechadas

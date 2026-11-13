@@ -1,5 +1,7 @@
 # Etapa 10 — Polimento, performance, segurança e go-live
 
+> **Status (13/11/2026):** implementada. Segurança: cabeçalhos (CSP, X-Frame-Options, nosniff, Referrer/Permissions-Policy, HSTS em produção), cookie seguro, HTTPS forçado; Livewire trata 419 recarregando e erros com aviso em português; páginas de erro próprias. Desempenho: cache longo de assets com hash, compressão, N+1 eliminados (testados com modo estrito e dados de demonstração), manutenção semanal/mensal do SQLite. Qualidade: Larastan no release.sh, DemoSeeder (demo@financee.test / demo12345, só local), teste de fumaça de todas as telas. Reordenar contas/cartões (setas). Pendente com o usuário: SMTP (ver docs/go-live.md). Não feitos: pull-to-refresh (o app já atualiza sozinho após lançamentos) e Lighthouse (sem ferramenta no ambiente).
+
 ## 10.1 Performance
 - Produção: `php artisan optimize` (config, rotas, views, eventos), OPcache, `composer --classmap-authoritative`.
 - SQLite: revisar o `EXPLAIN QUERY PLAN` das consultas principais, `PRAGMA optimize` agendado semanalmente e `VACUUM` mensal.

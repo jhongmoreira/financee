@@ -11,6 +11,12 @@
 
     RewriteEngine On
 
+    # Força HTTPS (PWA e cookies seguros exigem)
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -28,6 +34,24 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# Assets do Vite têm hash no nome: podem ficar em cache por 1 ano.
+<IfModule mod_headers.c>
+    <FilesMatch "-[A-Za-z0-9_]{8}\.(js|css)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(png|svg|ico|webmanifest)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml application/manifest+json
+</IfModule>
+
+<IfModule mime_module>
+    AddType application/manifest+json .webmanifest
 </IfModule>
 
 # BEGIN cPanel-generated php ini directives, do not edit

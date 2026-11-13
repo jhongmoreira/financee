@@ -33,6 +33,10 @@ RELEASE="$(date +%Y%m%d%H%M%S)-${COMMIT}"
 info "Rodando testes"
 php artisan test --compact || fail "Testes falharam. Release cancelado."
 
+info "Análise estática (Larastan)"
+./vendor/bin/phpstan analyse --no-progress --memory-limit=1G >/dev/null 2>&1 \
+    || fail "Larastan encontrou problemas (rode ./vendor/bin/phpstan analyse --memory-limit=1G). Release cancelado."
+
 info "Compilando assets (Vite)"
 npm ci --no-audit --no-fund --silent
 npm run build >/dev/null
