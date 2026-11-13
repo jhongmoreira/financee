@@ -70,3 +70,7 @@ it('não afeta os dados de outros usuários', function () {
 it('mostra a opção no perfil', function () {
     $this->actingAs($this->user)->get('/perfil')->assertOk()->assertSee('Recomeçar do zero')->assertSee('Apagar tudo e recomeçar');
 });
+
+it('liga o secure_delete do SQLite em toda conexão', function () {
+    expect((int) DB::selectOne('PRAGMA secure_delete')->secure_delete)->toBe(1);
+});

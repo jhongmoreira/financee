@@ -39,6 +39,7 @@ MAIL_FROM_NAME=Financee
 ## Opcional
 - **Fechar o cadastro** depois de criar as contas que você quer: `REGISTRATION_ENABLED=false` no `.env` + `optimize`.
 - **Backup**: o banco é o arquivo `~/financee-data/database.sqlite`. Cada usuário também pode baixar tudo em JSON em Perfil → "Exportar todos os meus dados".
+- **Exclusões são definitivas**: o SQLite roda com `PRAGMA secure_delete = ON` (ligado em toda conexão, em `AppServiceProvider`), então o conteúdo excluído é sobrescrito com zeros no arquivo do banco na hora — vale para "Recomeçar do zero", "Excluir conta" e qualquer exclusão.
 - **Chaves do push**: geradas automaticamente em `~/financee-data/storage/app/private/vapid.json`. Não apague (os dispositivos ativados deixariam de receber).
 
 ## Checklist de go-live
