@@ -1,5 +1,7 @@
 # Etapa 5 — Parcelamentos em conta, lançamentos fixos e previsões
 
+> **Status (13/11/2026):** implementada. Fixos geram 12 meses à frente (no cartão, só até o mês seguinte, para não consumir limite com compras que ainda não aconteceram); rotina diária às 03:10 estende e efetiva débitos automáticos. Edição de fixo vale "deste em diante" (os já pagos não mudam). Parcelado em conta: 2x a 120x, valor total ou da parcela. Previsão de 12 meses na aba Planejamento (gráfico em barras simples; gráficos completos na Etapa 7).
+
 ## 5.1 Parcelamento em conta (boleto/carnê/financiamento)
 - Reaproveita `installment_plans` com `account_id` preenchido.
 - Gera N lançamentos **previstos** (`paid_at = null`) mensais a partir da data do 1º vencimento.
