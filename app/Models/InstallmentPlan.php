@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +21,7 @@ class InstallmentPlan extends Model
 
     protected function casts(): array
     {
-        return ['total_amount' => 'integer', 'installments' => 'integer', 'first_date' => 'immutable_date'];
+        return ['total_amount' => 'integer', 'installments' => 'integer', 'first_date' => DateOnly::class];
     }
 
     /** @return HasMany<Transaction, $this> */

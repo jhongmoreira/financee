@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use App\Support\Month;
 use Carbon\CarbonImmutable;
@@ -25,8 +26,8 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
-            'closing_date' => 'immutable_date',
-            'due_date' => 'immutable_date',
+            'closing_date' => DateOnly::class,
+            'due_date' => DateOnly::class,
             'carried_in' => 'integer',
             'carried_out' => 'integer',
         ];

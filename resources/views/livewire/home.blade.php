@@ -44,6 +44,44 @@
             </x-ui.section>
         @endif
 
+        @if ($categoryChart)
+            <x-ui.section title="Despesas de {{ mb_strtolower($monthLabel) }}">
+                <x-ui.card class="flex items-center gap-4 p-4">
+                    <div class="relative size-32 shrink-0">
+                        <x-ui.chart :config="$categoryChart" height="size-32" />
+                        <div class="pointer-events-none absolute inset-0 grid place-items-center text-center">
+                            <span><span class="block text-[10px] text-muted">Total</span><x-ui.money :value="$categoryChart['total']" class="text-xs font-semibold" /></span>
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1 space-y-1.5 text-sm">
+                        @foreach ($categoryChart['legendItems'] as [$label, $color, $value])
+                            <div class="flex items-center gap-2">
+                                <span class="size-2.5 shrink-0 rounded-full" style="background-color: {{ $color }}"></span>
+                                <span class="min-w-0 flex-1 truncate">{{ $label }}</span>
+                                <x-ui.money :value="$value" class="text-xs text-muted" />
+                            </div>
+                        @endforeach
+                    </div>
+                </x-ui.card>
+            </x-ui.section>
+        @endif
+
+        @if ($budgets->isNotEmpty())
+            <x-ui.section title="Orçamentos">
+                <x-ui.card class="divide-y divide-line overflow-hidden">
+                    @foreach ($budgets as $row)
+                        <a href="{{ route('planning') }}" wire:navigate wire:key="hb-{{ $row['category']->id }}" class="tap block px-4 py-3 hover:bg-card-hover">
+                            <span class="flex items-center justify-between gap-3 text-sm">
+                                <span class="truncate font-medium">{{ $row['category']->name }}</span>
+                                <span class="text-xs text-muted"><x-ui.money :value="$row['spent']" /> / <x-ui.money :value="$row['budget']" /></span>
+                            </span>
+                            <x-ui.progress :pct="$row['pct']" class="mt-2" />
+                        </a>
+                    @endforeach
+                </x-ui.card>
+            </x-ui.section>
+        @endif
+
         <x-ui.section title="Contas">
             <x-ui.card class="divide-y divide-line overflow-hidden">
                 @foreach ($accounts as $account)
@@ -91,6 +129,14 @@
                     @svg('heroicon-o-chevron-right', 'size-5 text-muted')
                 </a>
             </div>
+        @endif
+
+        @if (array_sum($historyChart['data']['datasets'][0]['data']) + array_sum($historyChart['data']['datasets'][1]['data']) > 0)
+            <x-ui.section title="Receitas × despesas">
+                <x-ui.card class="p-4">
+                    <x-ui.chart :config="$historyChart" height="h-48" />
+                </x-ui.card>
+            </x-ui.section>
         @endif
 
         @if ($recent->isNotEmpty())

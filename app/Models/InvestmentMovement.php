@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use App\Services\AccountBalanceService;
 use Carbon\CarbonImmutable;
@@ -33,7 +34,7 @@ class InvestmentMovement extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'integer', 'date' => 'immutable_date', 'quantity' => 'decimal:8'];
+        return ['amount' => 'integer', 'date' => DateOnly::class, 'quantity' => 'decimal:8'];
     }
 
     protected static function booted(): void
