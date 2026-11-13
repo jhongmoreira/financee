@@ -44,10 +44,11 @@
         </x-ui.card>
 
         <div class="grid grid-cols-4 gap-2">
-            @foreach (\App\Models\InvestmentMovement::TYPES as $type => [$label, $icon, $color])
-                <button type="button" wire:click="newMovement('{{ $type }}')" class="tap flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-card py-3 text-xs font-medium">
-                    <span class="grid size-9 place-items-center rounded-full text-white" style="background-color: {{ $color }}">@svg('heroicon-o-'.$icon, 'size-5')</span>
-                    {{ $type === 'valuation' ? 'Atualizar' : $label }}
+            {{-- Atenção: não usar $type como variável do laço (é o tipo do formulário de movimento) --}}
+            @foreach (\App\Models\InvestmentMovement::TYPES as $btnType => [$btnLabel, $btnIcon, $btnColor])
+                <button type="button" wire:click="newMovement('{{ $btnType }}')" class="tap flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-card py-3 text-xs font-medium">
+                    <span class="grid size-9 place-items-center rounded-full text-white" style="background-color: {{ $btnColor }}">@svg('heroicon-o-'.$btnIcon, 'size-5')</span>
+                    {{ $btnType === 'valuation' ? 'Atualizar' : $btnLabel }}
                 </button>
             @endforeach
         </div>
@@ -56,11 +57,11 @@
             <h2 class="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted">Movimentações</h2>
             <x-ui.card class="divide-y divide-line overflow-hidden">
                 @forelse ($movements as $m)
-                    @php([$label, $icon, $color] = \App\Models\InvestmentMovement::TYPES[$m->type])
+                    @php([$mvLabel, $mvIcon, $mvColor] = \App\Models\InvestmentMovement::TYPES[$m->type])
                     <button type="button" wire:key="mv-{{ $m->id }}" wire:click="editMovement({{ $m->id }})" class="tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-card-hover">
-                        <x-ui.badge-avatar :color="$color" :icon="$icon" class="size-10" />
+                        <x-ui.badge-avatar :color="$mvColor" :icon="$mvIcon" class="size-10" />
                         <span class="min-w-0 flex-1">
-                            <span class="block font-medium">{{ $label }}</span>
+                            <span class="block font-medium">{{ $mvLabel }}</span>
                             <span class="block truncate text-sm text-muted">
                                 {{ $m->date->format('d/m/Y') }}
                                 @if ($m->account) · {{ $m->type === 'contribution' ? 'de' : 'para' }} {{ $m->account->name }} @endif
@@ -78,8 +79,25 @@
 
     <x-ui.bottom-sheet name="movement-form" :title="($movementId ? 'Editar ' : '').mb_strtolower(\App\Models\InvestmentMovement::TYPES[$type][0])">
         <form wire:submit="saveMovement" class="space-y-4">
-            <x-ui.money-input :label="$type === 'valuation' ? 'Valor atual do investimento' : 'Valor'" name="amount" wire:model="amount"
-                :hint="$type === 'valuation' ? 'Quanto o investimento vale hoje (veja no app da corretora).' : null" />
+            @if ($movementId)
+                <div>
+                    <p class="mb-1.5 text-sm font-medium">Tipo</p>
+                    <div class="grid grid-cols-4 gap-1 rounded-xl bg-canvas p-1 text-xs font-semibold">
+                        @foreach (\App\Models\InvestmentMovement::TYPES as $optType => [$optLabel])
+                            <label wire:key="mvtype-{{ $optType }}" @class(['tap cursor-pointer rounded-lg py-2 text-center', 'bg-card text-ink shadow-sm' => $type === $optType, 'text-muted' => $type !== $optType])>
+                                <input type="radio" wire:model.live="type" value="{{ $optType }}" class="sr-only"> {{ $optType === 'valuation' ? 'Atualização' : $optLabel }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+            <x-ui.money-input :label="match ($type) { 'valuation' => 'Valor atual do investimento', 'income' => 'Valor do rendimento', default => 'Valor' }" name="amount" wire:model="amount"
+                :hint="match ($type) {
+                    'valuation' => 'Quanto o investimento vale hoje, no total (veja no app da corretora). Substitui o valor atual.',
+                    'income' => 'Só o valor recebido (juros, dividendos, JCP), não o total. Para informar o total, use Atualizar.',
+                    'contribution' => 'Quanto você aplicou. Soma ao valor do investimento.',
+                    default => 'Quanto você resgatou. Diminui o valor do investimento.',
+                }" />
             <x-ui.input label="Data" name="date" type="date" wire:model="date" />
             @if ($type !== 'valuation')
                 <x-ui.select :label="$type === 'contribution' ? 'Saiu da conta (opcional)' : 'Entrou na conta (opcional)'" name="account_id" wire:model="account_id" :options="$accounts" placeholder="Nenhuma"
