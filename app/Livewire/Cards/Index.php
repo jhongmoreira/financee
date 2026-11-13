@@ -5,12 +5,14 @@ namespace App\Livewire\Cards;
 use App\Models\Account;
 use App\Models\CreditCard;
 use App\Models\Institution;
+use App\Services\InvoiceService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -116,7 +118,15 @@ class Index extends Component
 
     public function delete(): void
     {
-        CreditCard::findOrFail($this->editingId)->delete();
+        $card = CreditCard::findOrFail($this->editingId);
+
+        if ($card->transactions()->exists()) {
+            $this->dispatch('toast', message: 'Este cartão tem lançamentos. Arquive-o em vez de excluir.', type: 'error');
+
+            return;
+        }
+
+        $card->delete();
 
         $this->dispatch('close-sheet', 'card-form');
         $this->dispatch('toast', message: 'Cartão excluído.');
@@ -132,9 +142,17 @@ class Index extends Component
             ->ordered()->get();
     }
 
-    public function render(): View
+    #[On('entry-saved')]
+    public function refresh(): void {}
+
+    public function render(InvoiceService $invoices): View
     {
+        $current = $this->cards->mapWithKeys(fn (CreditCard $card) => [$card->id => $invoices->currentInvoice($card)]);
+        $summaries = $invoices->summaries($current->values());
+
         return view('livewire.cards.index', [
+            'current' => $current,
+            'summaries' => $summaries,
             'institutions' => Institution::options('bank'),
             'accounts' => Account::active()->ordered()->pluck('name', 'id')->all(),
             'days' => array_combine(range(1, 31), range(1, 31)),

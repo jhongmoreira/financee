@@ -10,37 +10,45 @@
 
     <div class="space-y-4 px-4 pt-2">
         @forelse ($this->cards as $card)
-            <button type="button" wire:key="card-{{ $card->id }}" wire:click="edit({{ $card->id }})"
-                    @class(['tap relative block aspect-[1.75] w-full overflow-hidden rounded-3xl p-5 text-left text-white shadow-lg', 'opacity-60 grayscale' => $card->archived_at])
-                    style="background: linear-gradient(135deg, {{ $card->color }}, color-mix(in srgb, {{ $card->color }} 55%, black))">
-                <span class="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/10"></span>
-                <span class="pointer-events-none absolute -bottom-16 -left-6 size-44 rounded-full bg-white/5"></span>
+            @php
+                $invoice = $current[$card->id];
+                $sum = $summaries[$invoice->id];
+                $used = $card->usedLimit();
+                $pct = $card->limit > 0 ? min(100, round($used / $card->limit * 100)) : 0;
+            @endphp
+            <div wire:key="card-{{ $card->id }}" @class(['relative', 'opacity-60 grayscale' => $card->archived_at])>
+                <a href="{{ route('cards.invoice', $card) }}" wire:navigate
+                   class="tap relative block overflow-hidden rounded-3xl p-5 text-white shadow-lg"
+                   style="background: linear-gradient(135deg, {{ $card->color }}, color-mix(in srgb, {{ $card->color }} 55%, black))">
+                    <span class="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/10"></span>
 
-                <span class="relative flex h-full flex-col justify-between">
-                    <span class="flex items-start justify-between gap-2">
+                    <span class="relative flex items-start justify-between gap-2 pr-10">
                         <span class="min-w-0">
                             <span class="block truncate text-lg font-semibold">{{ $card->name }}</span>
-                            <span class="block text-xs text-white/75">{{ $card->institution?->name ?? 'Cartão de crédito' }}{{ $card->archived_at ? ' · Arquivado' : '' }}</span>
+                            <span class="block text-xs text-white/75">{{ $card->brandLabel() }} · fecha dia {{ $card->closing_day }} · vence dia {{ $card->due_day }}{{ $card->archived_at ? ' · Arquivado' : '' }}</span>
                         </span>
-                        <span class="shrink-0 rounded-md bg-white/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">{{ $card->brandLabel() }}</span>
                     </span>
 
-                    <span class="grid grid-cols-[1fr_auto_auto] gap-5 text-xs">
+                    <span class="relative mt-5 flex items-end justify-between gap-3">
                         <span>
-                            <span class="block text-white/70">Limite</span>
-                            <x-ui.money :value="$card->limit" class="block whitespace-nowrap text-sm font-semibold" />
+                            <span class="block text-xs text-white/70">Fatura {{ $invoice->shortLabel() }} · {{ mb_strtolower($sum['label']) }}</span>
+                            <x-ui.money :value="$sum['total']" class="block text-2xl font-bold" />
                         </span>
-                        <span>
-                            <span class="block text-white/70">Fecha dia</span>
-                            <span class="block text-sm font-semibold">{{ $card->closing_day }}</span>
-                        </span>
-                        <span>
-                            <span class="block text-white/70">Vence dia</span>
-                            <span class="block text-sm font-semibold">{{ $card->due_day }}</span>
-                        </span>
+                        <span class="text-right text-xs text-white/80">vence<br><strong class="text-sm text-white">{{ $invoice->due_date->format('d/m') }}</strong></span>
                     </span>
-                </span>
-            </button>
+
+                    <span class="relative mt-4 block h-1.5 overflow-hidden rounded-full bg-white/20">
+                        <span class="block h-full rounded-full bg-white" style="width: {{ $pct }}%"></span>
+                    </span>
+                    <span class="relative mt-1.5 flex justify-between text-xs text-white/80">
+                        <span>Usado <x-ui.money :value="$used" /></span>
+                        <span>Disponível <x-ui.money :value="$card->limit - $used" class="font-semibold text-white" /></span>
+                    </span>
+                </a>
+                <button type="button" wire:click="edit({{ $card->id }})" class="tap absolute right-3 top-3 rounded-full bg-white/20 p-2 text-white" aria-label="Editar {{ $card->name }}">
+                    @svg('heroicon-o-pencil-square', 'size-5')
+                </button>
+            </div>
         @empty
             <x-ui.card>
                 <x-ui.empty-state icon="credit-card" title="Nenhum cartão cadastrado" description="Cadastre seus cartões para acompanhar faturas, limites e parcelas.">

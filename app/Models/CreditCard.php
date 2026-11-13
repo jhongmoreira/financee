@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $limit centavos
@@ -59,6 +60,35 @@ class CreditCard extends Model
     public function scopeOrdered(Builder $query): void
     {
         $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    /** @return HasMany<Invoice, $this> */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    /** @return HasMany<Transaction, $this> */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /** Limite utilizado = compras − estornos − pagamentos (inclui parcelas futuras). */
+    public function usedLimit(): int
+    {
+        $purchases = (int) $this->transactions()
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE -amount END), 0) AS total")
+            ->value('total');
+
+        $payments = (int) InvoicePayment::query()->whereIn('invoice_id', $this->invoices()->select('id'))->sum('amount');
+
+        return max(0, $purchases - $payments);
+    }
+
+    public function availableLimit(): int
+    {
+        return $this->limit - $this->usedLimit();
     }
 
     public function brandLabel(): string

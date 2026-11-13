@@ -1,5 +1,7 @@
 # Etapa 4 — Cartão de crédito e faturas
 
+> **Status (13/11/2026):** implementada. Fatura identificada pelo mês de vencimento; compra no dia do fechamento já cai na próxima. Pagamento parcial: em fatura fechada o padrão é levar o restante para a próxima (pode desligar); em fatura aberta é adiantamento. Antecipação move as parcelas futuras para a fatura atual (sem desconto automático — ajuste o valor editando a parcela). Limitação conhecida: mudar os dias de fechamento/vencimento de um cartão não reorganiza faturas já criadas.
+
 ## 4.1 Modelo
 `invoices`: `id, user_id, credit_card_id, reference_month (YYYY-MM), closing_date, due_date, carried_balance (int, ± saldo vindo da fatura anterior), timestamps`. Índice único `(credit_card_id, reference_month)`.
 - Total da fatura = Σ despesas − Σ estornos/créditos + `carried_balance`.

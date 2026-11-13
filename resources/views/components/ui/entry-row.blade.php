@@ -5,8 +5,12 @@
     $neutral = $row['neutral'] ?? false;
 @endphp
 <div class="flex items-center gap-3 px-4 py-3 hover:bg-card-hover">
+    @if (! empty($row['href']))
+    <a href="{{ $row['href'] }}" wire:navigate class="tap flex min-w-0 flex-1 items-center gap-3 text-left">
+    @else
     <button type="button" class="tap flex min-w-0 flex-1 items-center gap-3 text-left"
             x-on:click="$dispatch('edit-entry', { kind: '{{ $isTransfer ? 'transfer' : 'transaction' }}', id: {{ $row['id'] }} })">
+    @endif
         <span class="relative">
             <x-ui.badge-avatar :color="$row['color']" :icon="$row['icon']" class="size-10" />
             @unless ($row['paid'])
@@ -22,7 +26,7 @@
                 {{ $row['subtitle'] }}
             </span>
         </span>
-    </button>
+    @if (! empty($row['href'])) </a> @else </button> @endif
     <div class="flex shrink-0 flex-col items-end gap-1">
         <x-ui.money :value="$row['amount']" @class([
             'font-semibold',

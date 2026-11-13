@@ -5,6 +5,7 @@ use App\Livewire\Categories\Index as CategoriesIndex;
 use App\Livewire\Transactions\Index;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\CreditCard;
 use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Models\User;
@@ -88,4 +89,13 @@ it('exibe a Início com saldo e pendências', function () {
     Transaction::factory()->pending()->create(['description' => 'Internet', 'account_id' => $this->account->id, 'date' => '2026-11-17', 'amount' => 9990]);
 
     $this->get('/')->assertOk()->assertSee('R$ 100,00')->assertSee('Internet')->assertSee('Contas a pagar e receber');
+});
+
+it('não acessa a fatura de cartão de outro usuário pela URL', function () {
+    $other = User::factory()->create();
+    $card = new CreditCard(['name' => 'Alheio', 'brand' => 'visa', 'limit' => 1, 'closing_day' => 1, 'due_day' => 8, 'color' => '#059669']);
+    $card->user_id = $other->id;
+    $card->save();
+
+    $this->get(route('cards.invoice', $card->id))->assertNotFound();
 });

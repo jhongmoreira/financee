@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $paid_at
  * @property-read Account|null $account
  * @property-read Category|null $category
+ * @property-read CreditCard|null $creditCard
+ * @property-read Invoice|null $invoice
  */
 class Transaction extends Model
 {
@@ -29,6 +31,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'type', 'description', 'notes', 'amount', 'date', 'paid_at', 'account_id', 'category_id', 'is_adjustment',
+        'credit_card_id', 'invoice_id', 'installment_plan_id', 'installment_number', 'installment_total',
     ];
 
     protected function casts(): array
@@ -58,6 +61,35 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return BelongsTo<CreditCard, $this> */
+    public function creditCard(): BelongsTo
+    {
+        return $this->belongsTo(CreditCard::class);
+    }
+
+    /** @return BelongsTo<Invoice, $this> */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    /** @return BelongsTo<InstallmentPlan, $this> */
+    public function installmentPlan(): BelongsTo
+    {
+        return $this->belongsTo(InstallmentPlan::class);
+    }
+
+    public function isCard(): bool
+    {
+        return $this->credit_card_id !== null;
+    }
+
+    /** Ex.: "3/10" */
+    public function installmentLabel(): ?string
+    {
+        return $this->installment_total ? $this->installment_number.'/'.$this->installment_total : null;
     }
 
     /** @param Builder<Transaction> $query */
