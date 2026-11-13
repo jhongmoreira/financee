@@ -5,6 +5,7 @@ namespace App\Livewire\Accounts;
 use App\Models\Account;
 use App\Models\Institution;
 use App\Models\Transaction;
+use App\Support\Reorder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,8 @@ class Index extends Component
 {
     public bool $showArchived = false;
 
+    public bool $reordering = false;
+
     #[Locked]
     public ?int $editingId = null;
 
@@ -36,6 +39,12 @@ class Index extends Component
     public string $color = '#059669';
 
     public bool $include_in_total = true;
+
+    public function move(int $id, int $direction): void
+    {
+        Reorder::move(Account::query()->active()->ordered(), $id, $direction);
+        unset($this->accounts);
+    }
 
     public function create(): void
     {

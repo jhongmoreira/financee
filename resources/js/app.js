@@ -189,6 +189,22 @@ document.addEventListener('alpine:init', () => {
 
 // Toasts disparados pelo Livewire
 document.addEventListener('livewire:init', () => {
+    // Sessão expirada (419) ou erro do servidor: em vez do diálogo padrão (em inglês)
+    window.Livewire.hook('request', ({ fail }) => {
+        fail(({ status, preventDefault }) => {
+            if (status === 419) {
+                preventDefault();
+                window.location.reload();
+            } else if (status >= 500) {
+                preventDefault();
+                window.Alpine.store('toast').show('Algo deu errado. Tente novamente.', 'error');
+            } else if (status === 0) {
+                preventDefault();
+                window.Alpine.store('toast').show('Sem conexão com a internet.', 'error');
+            }
+        });
+    });
+
     window.Livewire.on('toast', (payload) => {
         const data = Array.isArray(payload) ? payload[0] : payload;
         window.Alpine.store('toast').show(data.message, data.type ?? 'success');

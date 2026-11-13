@@ -26,7 +26,7 @@
             @else
                 <x-ui.card class="divide-y divide-line overflow-hidden">
                     @foreach ($this->accounts as $account)
-                        <button type="button" wire:key="acc-{{ $account->id }}" wire:click="edit({{ $account->id }})"
+                        <button type="button" wire:key="acc-{{ $account->id }}" @if (! $reordering) wire:click="edit({{ $account->id }})" @endif
                                 @class(['tap flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-card-hover', 'opacity-60' => $account->archived_at])>
                             @if ($account->institution && $account->institution->type !== 'other')
                                 <x-ui.badge-avatar :color="$account->color" :text="$account->institution->short" class="size-10" />
@@ -40,15 +40,27 @@
                                     @if ($account->archived_at) · Arquivada @elseif (! $account->include_in_total) · Fora do total @endif
                                 </span>
                             </span>
-                            <x-ui.money :value="$account->balance()" @class(['font-semibold', 'text-expense' => $account->balance() < 0]) />
+                            @if ($reordering && ! $account->archived_at)
+                                <span class="flex flex-col" x-on:click.stop>
+                                    <span role="button" wire:click="move({{ $account->id }}, -1)" class="tap rounded p-1 text-muted hover:bg-canvas" aria-label="Subir {{ $account->name }}">@svg('heroicon-m-chevron-up', 'size-5')</span>
+                                    <span role="button" wire:click="move({{ $account->id }}, 1)" class="tap rounded p-1 text-muted hover:bg-canvas" aria-label="Descer {{ $account->name }}">@svg('heroicon-m-chevron-down', 'size-5')</span>
+                                </span>
+                            @else
+                                <x-ui.money :value="$account->balance()" @class(['font-semibold', 'text-expense' => $account->balance() < 0]) />
+                            @endif
                         </button>
                     @endforeach
                 </x-ui.card>
             @endif
 
-            <label class="mt-3 flex cursor-pointer items-center justify-center gap-2 text-sm text-muted">
-                <input type="checkbox" wire:model.live="showArchived" class="size-4 rounded accent-emerald-600"> Mostrar arquivadas
-            </label>
+            <div class="mt-3 flex items-center justify-center gap-5 text-sm text-muted">
+                <label class="flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" wire:model.live="showArchived" class="size-4 rounded accent-emerald-600"> Mostrar arquivadas
+                </label>
+                @if ($this->accounts->count() > 1)
+                    <button type="button" wire:click="$toggle('reordering')" class="font-medium text-brand">{{ $reordering ? 'Concluir' : 'Reordenar' }}</button>
+                @endif
+            </div>
         </x-ui.section>
     </div>
 
