@@ -295,9 +295,7 @@ class EntryForm extends Component
             'cards' => $cards,
             'categoryOptions' => $hasCategories ? $this->categoryOptions() : [],
             'recentCategories' => $hasCategories ? $this->recentCategories() : collect(),
-            'suggestions' => $hasCategories ? Transaction::query()->where('type', $this->transactionType())
-                ->where('is_adjustment', false)->whereNull('installment_number')->latest('id')->limit(200)
-                ->pluck('description')->unique()->take(40)->values()->all() : [],
+            'suggestions' => $hasCategories ? $this->recentDescriptions() : [],
             'invoiceOptions' => $this->kind === 'card' ? $this->invoiceOptions($invoices) : [],
             'plan' => $this->planId ? InstallmentPlan::find($this->planId) : null,
             'recurrence' => $this->recurrenceId ? Recurrence::find($this->recurrenceId) : null,
@@ -588,6 +586,22 @@ class EntryForm extends Component
         }
 
         return $options;
+    }
+
+    /**
+     * Descrições usadas recentemente (mais recentes primeiro, sem repetir), do mesmo tipo
+     * e do mesmo meio (conta ou cartão). A tela mostra até 5, filtrando pelo que é digitado.
+     *
+     * @return list<string>
+     */
+    private function recentDescriptions(): array
+    {
+        return Transaction::query()->where('type', $this->transactionType())
+            ->where('is_adjustment', false)->whereNull('installment_number')
+            ->when($this->kind === 'card', fn ($q) => $q->whereNotNull('credit_card_id'), fn ($q) => $q->whereNull('credit_card_id'))
+            ->where('date', '<=', today()->toDateString()) // fixos/parcelas futuros não são "recentes"
+            ->latest('date')->latest('id')->limit(300)->pluck('description')
+            ->unique(fn (string $d) => mb_strtolower(trim($d)))->take(50)->values()->all();
     }
 
     /** @return Collection<int, Category> categorias usadas recentemente */
