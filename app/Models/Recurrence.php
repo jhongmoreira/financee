@@ -26,14 +26,15 @@ class Recurrence extends Model
 {
     use BelongsToUser;
 
-    /** frequência => [rótulo, meses entre ocorrências (0 = semanal)] */
+    /** frequência => [rótulo, meses entre ocorrências, dias entre ocorrências (quando meses = 0)] */
     public const FREQUENCIES = [
-        'weekly' => ['Semanal', 0],
-        'monthly' => ['Mensal', 1],
-        'bimonthly' => ['Bimestral', 2],
-        'quarterly' => ['Trimestral', 3],
-        'semiannual' => ['Semestral', 6],
-        'yearly' => ['Anual', 12],
+        'weekly' => ['Semanal', 0, 7],
+        'biweekly' => ['Quinzenal (a cada 2 semanas, mesmo dia da semana)', 0, 14],
+        'monthly' => ['Mensal', 1, 0],
+        'bimonthly' => ['Bimestral', 2, 0],
+        'quarterly' => ['Trimestral', 3, 0],
+        'semiannual' => ['Semestral', 6, 0],
+        'yearly' => ['Anual', 12, 0],
     ];
 
     protected $fillable = [
@@ -84,24 +85,26 @@ class Recurrence extends Model
 
     public function frequencyLabel(): string
     {
-        return self::FREQUENCIES[$this->frequency][0] ?? 'Mensal';
+        // Nas listas, sem a explicação entre parênteses ("Quinzenal (a cada 2 semanas...)" → "Quinzenal")
+        return trim(explode(' (', self::FREQUENCIES[$this->frequency][0] ?? 'Mensal')[0]);
     }
 
     /** Valor equivalente por mês (para "total comprometido por mês"). */
     public function monthlyAmount(): int
     {
-        $months = self::FREQUENCIES[$this->frequency][1] ?? 1;
+        [, $months, $days] = self::FREQUENCIES[$this->frequency] ?? self::FREQUENCIES['monthly'];
 
-        return $months === 0 ? (int) round($this->amount * 52 / 12) : intdiv($this->amount, $months);
+        // Frequência em dias: média de ocorrências por mês (365 dias / 12 meses)
+        return $months === 0 ? (int) round($this->amount * 365 / max(1, $days) / 12) : intdiv($this->amount, $months);
     }
 
     /** n-ésima ocorrência (0 = data inicial), sem "escorregar" o dia ao longo dos meses. */
     public function occurrence(int $n): CarbonImmutable
     {
-        $months = self::FREQUENCIES[$this->frequency][1] ?? 1;
+        [, $months, $days] = self::FREQUENCIES[$this->frequency] ?? self::FREQUENCIES['monthly'];
 
         return $months === 0
-            ? $this->start_date->addWeeks($n)
+            ? $this->start_date->addDays($n * $days)
             : $this->start_date->addMonthsNoOverflow($n * $months);
     }
 }

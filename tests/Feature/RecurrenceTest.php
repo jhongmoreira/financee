@@ -169,3 +169,27 @@ it('prevê o saldo mês a mês com fixos e faturas', function () {
 
     Livewire::test(Planning::class)->set('tab', 'previsao')->assertSee('Saldo geral ao fim de cada mês')->assertSee('R$ 700,00');
 });
+
+it('fixo quinzenal repete a cada 2 semanas, sempre no mesmo dia da semana', function () {
+    $r = recurrence(['frequency' => 'biweekly', 'start_date' => '2026-11-17', 'end_date' => '2027-01-31', 'amount' => 60000]); // terça
+    $this->service->generate($r);
+
+    $dates = Transaction::where('recurrence_id', $r->id)->orderBy('date')->pluck('date');
+
+    expect($dates->map->toDateString()->all())
+        ->toBe(['2026-11-17', '2026-12-01', '2026-12-15', '2026-12-29', '2027-01-12', '2027-01-26'])
+        ->and($dates->map->dayOfWeekIso->unique()->all())->toBe([2]) // todas numa terça
+        ->and($r->frequencyLabel())->toBe('Quinzenal')
+        ->and($r->monthlyAmount())->toBe(130357); // 600 × 365/14/12 ≈ 1.303,57 por mês
+});
+
+it('cria fixo quinzenal pelo formulário', function () {
+    Livewire::test(EntryForm::class)->call('open', 'income')
+        ->set('amount', 250000)->set('description', 'Pagamento quinzenal')->set('account_id', (string) $this->account->id)
+        ->set('repeat', 'fixed')->set('frequency', 'biweekly')->set('end_date', '2026-12-31')
+        ->call('save')->assertHasNoErrors();
+
+    expect(Recurrence::firstOrFail()->frequency)->toBe('biweekly')
+        ->and(Transaction::orderBy('date')->pluck('date')->map->toDateString()->all())
+        ->toBe(['2026-11-15', '2026-11-29', '2026-12-13', '2026-12-27']); // domingos
+});
