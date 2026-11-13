@@ -65,6 +65,25 @@
             <x-ui.button class="w-full">{{ $editingId ? 'Salvar alterações' : 'Criar conta' }}</x-ui.button>
 
             @if ($editing)
+                <div class="rounded-2xl border border-line p-4" x-data="{ open: false }">
+                    <button type="button" class="flex w-full items-center justify-between text-left" x-on:click="open = ! open">
+                        <span>
+                            <span class="block text-sm font-medium">Ajustar saldo</span>
+                            <span class="block text-sm text-muted">Saldo no app: {{ \App\Support\Money::format($editing->balance()) }}</span>
+                        </span>
+                        @svg('heroicon-o-chevron-down', 'size-5 text-muted')
+                    </button>
+                    <div x-show="open" x-collapse class="mt-3 space-y-3">
+                        <x-ui.money-input label="Saldo real no banco" name="real_balance" wire:model="real_balance" allow-negative
+                            hint="Criaremos um lançamento de ajuste com a diferença." />
+                        <x-ui.button type="button" variant="secondary" class="w-full" wire:click="adjustBalance">Ajustar</x-ui.button>
+                    </div>
+                </div>
+
+                <x-ui.button :href="route('transactions', ['conta' => $editing->id])" variant="ghost" class="w-full" wire:navigate>
+                    @svg('heroicon-o-list-bullet', 'size-5') Ver lançamentos desta conta
+                </x-ui.button>
+
                 <div class="grid grid-cols-2 gap-3">
                     <x-ui.button type="button" variant="secondary" wire:click="toggleArchive">
                         {{ $editing->archived_at ? 'Reativar' : 'Arquivar' }}

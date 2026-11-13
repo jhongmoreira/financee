@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Account;
+use App\Models\Transaction;
+use Carbon\CarbonImmutable;
+
+/**
+ * Totais do mês (receitas e despesas, efetivadas e previstas) e saldo previsto
+ * no fim do mês. Ajustes de saldo e transferências não entram como receita/despesa.
+ */
+class MonthSummary
+{
+    public function __construct(private AccountBalanceService $balances) {}
+
+    /** @return array{income: int, expense: int, income_paid: int, expense_paid: int, balance: int} */
+    public function totals(CarbonImmutable $month, ?int $accountId = null): array
+    {
+        $row = Transaction::query()->inMonth($month)->withoutAdjustments()
+            ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN type = 'income' THEN amount END), 0) AS income,
+                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount END), 0) AS expense,
+                COALESCE(SUM(CASE WHEN type = 'income' AND paid_at IS NOT NULL THEN amount END), 0) AS income_paid,
+                COALESCE(SUM(CASE WHEN type = 'expense' AND paid_at IS NOT NULL THEN amount END), 0) AS expense_paid
+            ")->first();
+
+        $income = (int) $row?->getAttribute('income');
+        $expense = (int) $row?->getAttribute('expense');
+
+        return [
+            'income' => $income,
+            'expense' => $expense,
+            'income_paid' => (int) $row?->getAttribute('income_paid'),
+            'expense_paid' => (int) $row?->getAttribute('expense_paid'),
+            'balance' => $income - $expense,
+        ];
+    }
+
+    /** Saldo geral atual (contas ativas marcadas para o total). */
+    public function currentTotal(): int
+    {
+        return $this->sumIncluded($this->balances->current());
+    }
+
+    /** Saldo geral previsto para o fim do mês (inclui pendentes até lá). */
+    public function projectedTotal(CarbonImmutable $month): int
+    {
+        return $this->sumIncluded($this->balances->projected($month->endOfMonth()));
+    }
+
+    /** @param array<int, int> $balances */
+    private function sumIncluded(array $balances): int
+    {
+        $ids = Account::query()->active()->where('include_in_total', true)->pluck('id');
+
+        return (int) $ids->sum(fn (int $id) => $balances[$id] ?? 0);
+    }
+}

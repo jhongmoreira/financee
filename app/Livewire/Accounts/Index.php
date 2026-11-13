@@ -4,6 +4,7 @@ namespace App\Livewire\Accounts;
 
 use App\Models\Account;
 use App\Models\Institution;
+use App\Models\Transaction;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
@@ -54,6 +55,7 @@ class Index extends Component
         $this->initial_balance = $account->initial_balance;
         $this->color = $account->color;
         $this->include_in_total = $account->include_in_total;
+        $this->real_balance = $account->balance();
 
         $this->dispatch('open-sheet', 'account-form');
     }
@@ -105,9 +107,44 @@ class Index extends Component
         $this->resetForm();
     }
 
+    public int $real_balance = 0;
+
+    /** Cria um lançamento de ajuste para o saldo do app bater com o do banco. */
+    public function adjustBalance(): void
+    {
+        $account = Account::findOrFail($this->editingId);
+        $this->validate(['real_balance' => ['required', 'integer', 'between:-100000000000,100000000000']]);
+
+        $difference = $this->real_balance - $account->balance();
+
+        if ($difference !== 0) {
+            Transaction::create([
+                'type' => $difference > 0 ? 'income' : 'expense',
+                'description' => 'Ajuste de saldo',
+                'amount' => abs($difference),
+                'date' => today(),
+                'paid_at' => today(),
+                'account_id' => $account->id,
+                'is_adjustment' => true,
+            ]);
+        }
+
+        $this->dispatch('close-sheet', 'account-form');
+        $this->dispatch('toast', message: $difference === 0 ? 'O saldo já estava correto.' : 'Saldo ajustado.');
+        $this->resetForm();
+    }
+
     public function delete(): void
     {
-        Account::findOrFail($this->editingId)->delete();
+        $account = Account::findOrFail($this->editingId);
+
+        if ($account->hasMovements()) {
+            $this->dispatch('toast', message: 'Esta conta tem lançamentos. Arquive-a em vez de excluir.', type: 'error');
+
+            return;
+        }
+
+        $account->delete();
 
         $this->dispatch('close-sheet', 'account-form');
         $this->dispatch('toast', message: 'Conta excluída.');
@@ -140,6 +177,6 @@ class Index extends Component
     private function resetForm(): void
     {
         $this->resetValidation();
-        $this->reset('editingId', 'name', 'type', 'institution_id', 'initial_balance', 'color', 'include_in_total');
+        $this->reset('editingId', 'name', 'type', 'institution_id', 'initial_balance', 'color', 'include_in_total', 'real_balance');
     }
 }

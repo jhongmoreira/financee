@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
+use App\Services\AccountBalanceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $initial_balance centavos
@@ -52,10 +54,23 @@ class Account extends Model
         $query->orderBy('sort_order')->orderBy('name');
     }
 
-    /** Saldo atual em centavos. A partir da Etapa 3 soma os lançamentos efetivados. */
+    /** Saldo atual em centavos (saldo inicial + lançamentos efetivados). */
     public function balance(): int
     {
-        return $this->initial_balance;
+        return app(AccountBalanceService::class)->current()[$this->id] ?? $this->initial_balance;
+    }
+
+    /** @return HasMany<Transaction, $this> */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    /** Tem lançamentos ou transferências? (nesse caso só pode ser arquivada) */
+    public function hasMovements(): bool
+    {
+        return $this->transactions()->exists()
+            || Transfer::query()->where(fn ($q) => $q->where('from_account_id', $this->id)->orWhere('to_account_id', $this->id))->exists();
     }
 
     public function typeLabel(): string

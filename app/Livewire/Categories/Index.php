@@ -3,6 +3,7 @@
 namespace App\Livewire\Categories;
 
 use App\Models\Category;
+use App\Models\Transaction;
 use App\Support\Palette;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -103,9 +104,25 @@ class Index extends Component
         $this->resetForm();
     }
 
+    public ?string $replacement_id = null;
+
     public function delete(): void
     {
         $category = Category::findOrFail($this->editingId);
+        $ids = $this->familyIds($category);
+
+        // Lançamentos da categoria (e subcategorias) vão para a categoria escolhida.
+        if (Transaction::query()->whereIn('category_id', $ids)->exists()) {
+            $this->validate([
+                'replacement_id' => [
+                    'required', 'integer', Rule::notIn($ids),
+                    Rule::exists('categories', 'id')->where('user_id', Auth::id())->where('type', $category->type),
+                ],
+            ], ['replacement_id.required' => 'Escolha para onde mover os lançamentos.'], ['replacement_id' => 'categoria de destino']);
+
+            Transaction::query()->whereIn('category_id', $ids)->update(['category_id' => (int) $this->replacement_id]);
+        }
+
         $category->delete(); // subcategorias são removidas em cascata
 
         $this->dispatch('close-sheet', 'category-form');
@@ -124,18 +141,47 @@ class Index extends Component
     public function render(): View
     {
         $editing = $this->editingId ? Category::withCount('children')->find($this->editingId) : null;
+        $usage = $editing ? Transaction::query()->whereIn('category_id', $this->familyIds($editing))->count() : 0;
 
         return view('livewire.categories.index', [
             'parents' => $this->categories
                 ->reject(fn (Category $c) => $c->id === $this->editingId)
                 ->pluck('name', 'id')->all(),
             'editing' => $editing,
+            'usage' => $usage,
+            'replacements' => $editing && $usage ? $this->replacementOptions($editing) : [],
         ]);
+    }
+
+    /** @return list<int> */
+    private function familyIds(Category $category): array
+    {
+        return [$category->id, ...$category->children()->pluck('id')->all()];
+    }
+
+    /** @return array<int, string> */
+    private function replacementOptions(Category $category): array
+    {
+        $exclude = $this->familyIds($category);
+        $options = [];
+
+        foreach (Category::query()->ofType($category->type)->roots()->with('children')->orderBy('sort_order')->get() as $root) {
+            if (! in_array($root->id, $exclude, true)) {
+                $options[$root->id] = $root->name;
+            }
+            foreach ($root->children as $child) {
+                if (! in_array($child->id, $exclude, true)) {
+                    $options[$child->id] = $root->name.' › '.$child->name;
+                }
+            }
+        }
+
+        return $options;
     }
 
     private function resetForm(): void
     {
         $this->resetValidation();
-        $this->reset('editingId', 'name', 'parent_id', 'icon', 'color');
+        $this->reset('editingId', 'name', 'parent_id', 'icon', 'color', 'replacement_id');
     }
 }
