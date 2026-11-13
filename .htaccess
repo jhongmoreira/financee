@@ -1,0 +1,14 @@
+# O repositório fica dentro do public_html na Hostoo. Este arquivo bloqueia
+# o acesso web a tudo (.git, vendor, storage, .env...) pelo domínio principal.
+# O subdomínio aponta para public/, cujo .htaccess tem as próprias regras de
+# rewrite e por isso não herda este bloqueio.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>

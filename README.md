@@ -22,6 +22,6 @@ scripts/release.sh      # testes + build + push na branch production
 ```
 
 A Hostoo acompanha a branch `production` (que já contém `vendor/` e `public/build/`).
-O cron `* * * * * /usr/local/bin/ea-php84 ~/financee/artisan schedule:run` aplica
+O cron `* * * * * /usr/local/bin/ea-php84 ~/public_html/financee/artisan schedule:run` aplica
 migrations e caches automaticamente quando um novo `RELEASE` chega.
 `.env`, banco e storage de produção ficam em `~/financee-data/` (fora do deploy).

@@ -19,18 +19,25 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 /*
 | Em produção (Hostoo), o .env, o banco SQLite e o storage ficam em
-| "../financee-data", fora da pasta sincronizada pela integração Git.
-| Assim um deploy nunca sobrescreve nem apaga dados. Em desenvolvimento
-| essa pasta não existe e tudo continua na raiz do projeto.
+| "~/financee-data", fora da pasta sincronizada pela integração Git e fora
+| do public_html. Assim um deploy nunca sobrescreve nem apaga dados, e nada
+| disso fica acessível pela web. Em desenvolvimento a pasta não existe e
+| tudo continua na raiz do projeto.
 */
-$dataPath = dirname(__DIR__, 2).'/financee-data';
+$home = getenv('HOME') ?: (function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['dir'] ?? '') : '');
 
-if (is_file($dataPath.'/.env')) {
-    $app->useEnvironmentPath($dataPath);
+if ($home === '' && preg_match('#^(/home\d*/[^/]+)/#', __DIR__, $m)) {
+    $home = $m[1];
 }
 
-if (is_dir($dataPath.'/storage')) {
-    $app->useStoragePath($dataPath.'/storage');
+$dataPath = rtrim($home, '/').'/financee-data';
+
+if ($home !== '' && is_file($dataPath.'/.env')) {
+    $app->useEnvironmentPath($dataPath);
+
+    if (is_dir($dataPath.'/storage')) {
+        $app->useStoragePath($dataPath.'/storage');
+    }
 }
 
 return $app;

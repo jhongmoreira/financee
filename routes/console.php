@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schedule;
 
 /*
 | Cron da Hostoo (uma única linha):
-| * * * * * /usr/local/bin/ea-php84 ~/financee/artisan schedule:run >> /dev/null 2>&1
+| * * * * * /usr/local/bin/ea-php84 ~/public_html/financee/artisan schedule:run >> /dev/null 2>&1
 */
 
 // Aplica migrations/caches quando um novo release chega pela integração Git.
