@@ -80,6 +80,39 @@ document.addEventListener('alpine:init', () => {
 
 document.addEventListener('alpine:initialized', () => window.Alpine.store('install').refresh());
 
+// Gráfico: <div x-data="chart(config)"><canvas x-ref="canvas"></canvas></div>
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('chart', (config) => ({
+        instance: null,
+        observer: null,
+        destroyed: false,
+        async init() {
+            const { create } = await import('./charts.js');
+            const draw = () => {
+                // O canvas pode ter saído da página (navegação) enquanto o módulo carregava
+                if (this.destroyed || !this.$refs.canvas?.isConnected) return;
+                this.instance?.destroy();
+                try { this.instance = create(this.$refs.canvas, config); } catch (e) { this.instance = null; }
+            };
+            draw();
+            // Refaz ao trocar o tema (cores) ou ao ocultar valores
+            let dark = document.documentElement.classList.contains('dark');
+            this.observer = new MutationObserver(() => {
+                const now = document.documentElement.classList.contains('dark');
+                if (now !== dark) { dark = now; draw(); }
+            });
+            this.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            this.$watch('$store.privacy.hidden', () => this.instance?.update());
+        },
+        destroy() {
+            this.destroyed = true;
+            this.observer?.disconnect();
+            this.instance?.destroy();
+            this.instance = null;
+        },
+    }));
+});
+
 // Toasts disparados pelo Livewire
 document.addEventListener('livewire:init', () => {
     window.Livewire.on('toast', (payload) => {

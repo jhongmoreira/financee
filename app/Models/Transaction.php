@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use App\Services\AccountBalanceService;
 use Carbon\CarbonImmutable;
@@ -38,8 +39,8 @@ class Transaction extends Model
     {
         return [
             'amount' => 'integer',
-            'date' => 'immutable_date',
-            'paid_at' => 'immutable_date',
+            'date' => DateOnly::class,
+            'paid_at' => DateOnly::class,
             'is_adjustment' => 'boolean',
         ];
     }
