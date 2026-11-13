@@ -45,14 +45,19 @@ self.addEventListener('fetch', (event) => {
     }
 });
 
-// Notificações push (Etapa 9)
+// Notificações push. Formato enviado pelo servidor (WebPushMessage):
+// { title, body, icon, badge, tag, data: { url } }
 self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.json() : {};
-    event.waitUntil(self.registration.showNotification(data.title || 'Financee', {
-        body: data.body || '',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/favicon-32.png',
-        data: { url: data.url || '/' },
+    let payload = {};
+    try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = { body: event.data ? event.data.text() : '' }; }
+
+    event.waitUntil(self.registration.showNotification(payload.title || 'Financee', {
+        body: payload.body || '',
+        icon: payload.icon || '/icons/icon-192.png',
+        badge: payload.badge || '/icons/favicon-32.png',
+        tag: payload.tag || undefined,
+        renotify: !!payload.tag,
+        data: { url: (payload.data && payload.data.url) || payload.url || '/' },
     }));
 });
 

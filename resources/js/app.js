@@ -113,6 +113,80 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
+// Ativação de notificações push neste dispositivo
+const base64ToUint8 = (base64) => {
+    const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+};
+
+const postJson = (url, body) => fetch(url, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+    },
+    body: JSON.stringify(body),
+});
+
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('pushDevice', (publicKey, subscribeUrl, unsubscribeUrl) => ({
+        supported: 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
+        permission: 'Notification' in window ? Notification.permission : 'denied',
+        subscribed: false,
+        busy: false,
+        needsInstall: isIos() && !isStandalone(),
+        async registration() {
+            return (await navigator.serviceWorker.getRegistration()) || navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        },
+        async init() {
+            if (!this.supported) return;
+            const reg = await navigator.serviceWorker.getRegistration();
+            this.subscribed = !!(reg && await reg.pushManager.getSubscription());
+        },
+        async enable() {
+            this.busy = true;
+            try {
+                this.permission = await Notification.requestPermission();
+                if (this.permission !== 'granted') {
+                    window.Alpine.store('toast').show('Permissão negada. Libere as notificações nas configurações do navegador.', 'error');
+                    return;
+                }
+                const reg = await this.registration();
+                await navigator.serviceWorker.ready;
+                const sub = (await reg.pushManager.getSubscription())
+                    || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToUint8(publicKey) });
+                const json = sub.toJSON();
+                const res = await postJson(subscribeUrl, { endpoint: json.endpoint, keys: json.keys, contentEncoding: (PushManager.supportedContentEncodings || ['aes128gcm'])[0] });
+                if (!res.ok) throw new Error('falha ao salvar');
+                this.subscribed = true;
+                window.Alpine.store('toast').show('Notificações ativadas neste dispositivo.');
+                this.$wire.$refresh();
+            } catch (e) {
+                window.Alpine.store('toast').show('Não foi possível ativar as notificações.', 'error');
+            } finally {
+                this.busy = false;
+            }
+        },
+        async disable() {
+            this.busy = true;
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                const sub = reg && await reg.pushManager.getSubscription();
+                if (sub) {
+                    await postJson(unsubscribeUrl, { endpoint: sub.endpoint });
+                    await sub.unsubscribe();
+                }
+                this.subscribed = false;
+                window.Alpine.store('toast').show('Notificações desativadas neste dispositivo.');
+                this.$wire.$refresh();
+            } finally {
+                this.busy = false;
+            }
+        },
+    }));
+});
+
 // Toasts disparados pelo Livewire
 document.addEventListener('livewire:init', () => {
     window.Livewire.on('toast', (payload) => {

@@ -49,7 +49,7 @@
             <x-ui.card class="divide-y divide-line overflow-hidden" x-data>
                 <x-ui.list-item icon="arrow-down-tray" label="Instalar o app" description="Acesso rápido pela tela inicial"
                     x-show="! $store.install.standalone" @click="$store.install.prompt()" :chevron="true" />
-                <x-ui.list-item icon="bell" icon-class="bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300" label="Notificações" badge="Em breve" />
+                <x-ui.list-item icon="bell" icon-class="bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300" label="Notificações" description="Avisos de contas, faturas e orçamentos" :href="route('notifications')" />
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="tap flex w-full items-center gap-3 px-4 py-3 text-left font-medium text-rose-600 hover:bg-card-hover dark:text-rose-400">
