@@ -13,6 +13,7 @@ use App\Services\ForecastService;
 use App\Services\InvoiceService;
 use App\Services\RecurrenceService;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -33,7 +34,7 @@ function recurrence(array $attrs = []): Recurrence
     ]);
 }
 
-it('gera 12 meses à frente sem escorregar o dia', function () {
+it('gera até 31/12 do ano seguinte sem escorregar o dia', function () {
     $r = recurrence(['start_date' => '2026-01-31']);
     $this->service->generate($r);
 
@@ -41,7 +42,7 @@ it('gera 12 meses à frente sem escorregar o dia', function () {
     expect($dates->first())->toBe('2026-01-31')
         ->and($dates->get(1))->toBe('2026-02-28')
         ->and($dates->get(2))->toBe('2026-03-31') // não fica preso no dia 28
-        ->and($dates->last())->toBe('2027-11-30')
+        ->and($dates->last())->toBe('2027-12-31')
         ->and(Transaction::whereNotNull('paid_at')->count())->toBe(0);
 });
 
@@ -84,7 +85,7 @@ it('alterar deste em diante não mexe nos já pagos', function () {
     expect($byDate['2026-09-10'])->toBe(150000)
         ->and($byDate['2026-11-10'])->toBe(150000) // antes de 15/11, pendente, mantém
         ->and($byDate['2026-12-10'])->toBe(170000)
-        ->and($byDate->count())->toBe(15);
+        ->and($byDate->count())->toBe(16); // set/26 .. dez/27
 });
 
 it('encerrar remove só os pendentes futuros', function () {
@@ -98,12 +99,12 @@ it('encerrar remove só os pendentes futuros', function () {
         ->and($r->fresh()->end_date->toDateString())->toBe('2026-11-14');
 });
 
-it('assinatura no cartão gera 12 meses e só ocupa limite a partir da cobrança', function () {
+it('assinatura no cartão gera até o fim do ano seguinte e só ocupa limite a partir da cobrança', function () {
     $card = CreditCard::create(['name' => 'C', 'brand' => 'visa', 'limit' => 100000, 'closing_day' => 3, 'due_day' => 10, 'color' => '#7c3aed']);
     $r = recurrence(['credit_card_id' => $card->id, 'account_id' => null, 'amount' => 3990, 'start_date' => '2026-11-05']);
     $this->service->generate($r);
 
-    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(13) // nov/26 .. nov/27
+    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(14) // nov/26 .. dez/27
         ->and(Transaction::where('recurrence_id', $r->id)->whereNull('invoice_id')->count())->toBe(0)
         ->and($card->usedLimit())->toBe(3990); // só a de 05/11 (já cobrada)
 });
@@ -131,7 +132,7 @@ it('cria lançamento fixo pelo formulário', function () {
         ->call('save')->assertHasNoErrors();
 
     $r = Recurrence::firstOrFail();
-    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(13) // nov/26 .. nov/27
+    expect(Transaction::where('recurrence_id', $r->id)->count())->toBe(14) // nov/26 .. dez/27
         ->and(Transaction::where('recurrence_id', $r->id)->whereNotNull('paid_at')->pluck('date')->map->toDateString()->all())->toBe(['2026-11-15']);
 });
 
@@ -209,4 +210,18 @@ it('cria fixo quinzenal pelo formulário', function () {
     expect(Recurrence::firstOrFail()->frequency)->toBe('biweekly')
         ->and(Transaction::orderBy('date')->pluck('date')->map->toDateString()->all())
         ->toBe(['2026-11-15', '2026-11-29', '2026-12-13', '2026-12-27']); // domingos
+});
+
+it('horizonte: restante do ano atual + ano seguinte inteiro, estendido pela rotina diária', function () {
+    $r = recurrence(['start_date' => '2026-11-10']);
+    $this->service->generate($r);
+    expect(Transaction::where('recurrence_id', $r->id)->max('date'))->toBe('2027-12-10');
+
+    // Na virada do ano a rotina diária estende até dez do ano seguinte
+    CarbonImmutable::setTestNow('2027-01-02 03:10');
+    Auth::forgetUser();
+    $this->service->runDaily();
+
+    expect(Transaction::withoutGlobalScopes()->where('recurrence_id', $r->id)->max('date'))->toBe('2028-12-10')
+        ->and(Transaction::withoutGlobalScopes()->where('recurrence_id', $r->id)->count())->toBe(26); // nov/26 .. dez/28
 });

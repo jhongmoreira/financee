@@ -9,7 +9,7 @@ Suíte de testes automatizados (Pest) e análise estática (Larastan nível 6) r
 |---|---|---|
 | a cada minuto | `app:post-deploy` | Após um deploy: migrations + caches (cada passo em processo separado) |
 | a cada minuto | `queue:work --stop-when-empty` | Fila: envio das notificações push |
-| 03:10 | `recurrences:generate` | Estende os lançamentos fixos (12 meses) e efetiva débitos automáticos |
+| 03:10 | `recurrences:generate` | Estende os lançamentos fixos (até 31/12 do ano seguinte) e efetiva débitos automáticos |
 | 09:00 | `notifications:send` | Avisos do dia (contas, faturas, saldo negativo, investimentos) |
 | dom 04:00 | `app:db-maintenance` | `PRAGMA optimize` no SQLite |
 | dia 1º 04:30 | `app:db-maintenance --vacuum` | Compacta o arquivo do SQLite |
