@@ -45,9 +45,16 @@
                         <span>Disponível <x-ui.money :value="$card->limit - $used" class="font-semibold text-white" /></span>
                     </span>
                 </a>
-                <button type="button" wire:click="edit({{ $card->id }})" class="tap absolute right-3 top-3 rounded-full bg-white/20 p-2 text-white" aria-label="Editar {{ $card->name }}">
-                    @svg('heroicon-o-pencil-square', 'size-5')
-                </button>
+                @if ($reordering && ! $card->archived_at)
+                    <div class="absolute right-3 top-3 flex gap-1">
+                        <button type="button" wire:click="move({{ $card->id }}, -1)" class="tap rounded-full bg-white/20 p-2 text-white" aria-label="Subir {{ $card->name }}">@svg('heroicon-m-chevron-up', 'size-5')</button>
+                        <button type="button" wire:click="move({{ $card->id }}, 1)" class="tap rounded-full bg-white/20 p-2 text-white" aria-label="Descer {{ $card->name }}">@svg('heroicon-m-chevron-down', 'size-5')</button>
+                    </div>
+                @else
+                    <button type="button" wire:click="edit({{ $card->id }})" class="tap absolute right-3 top-3 rounded-full bg-white/20 p-2 text-white" aria-label="Editar {{ $card->name }}">
+                        @svg('heroicon-o-pencil-square', 'size-5')
+                    </button>
+                @endif
             </div>
         @empty
             <x-ui.card>
@@ -57,9 +64,14 @@
             </x-ui.card>
         @endforelse
 
-        <label class="flex cursor-pointer items-center justify-center gap-2 text-sm text-muted">
-            <input type="checkbox" wire:model.live="showArchived" class="size-4 rounded accent-emerald-600"> Mostrar arquivados
-        </label>
+        <div class="flex items-center justify-center gap-5 text-sm text-muted">
+            <label class="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" wire:model.live="showArchived" class="size-4 rounded accent-emerald-600"> Mostrar arquivados
+            </label>
+            @if ($this->cards->count() > 1)
+                <button type="button" wire:click="$toggle('reordering')" class="font-medium text-brand">{{ $reordering ? 'Concluir' : 'Reordenar' }}</button>
+            @endif
+        </div>
     </div>
 
     <x-ui.bottom-sheet name="card-form" :title="$editingId ? 'Editar cartão' : 'Novo cartão'">

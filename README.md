@@ -2,6 +2,13 @@
 
 PWA de finanças pessoais (Laravel 12 + Livewire + Tailwind + SQLite), mobile-first.
 
+**Recursos:** contas e saldos, lançamentos (despesa, receita, transferência), cartões de crédito com faturas,
+parcelamento, estornos e pagamentos parciais, lançamentos fixos e parcelados em conta, previsão de saldo,
+orçamentos por categoria, investimentos (saldo separado), relatórios com gráficos, exportação CSV/PDF/JSON,
+notificações push, tema escuro e app instalável.
+
+- Operação em produção: [`docs/go-live.md`](docs/go-live.md)
+
 - Planejamento: [`docs/plano-geral.md`](docs/plano-geral.md) e [`docs/etapas/`](docs/etapas)
 
 ## Desenvolvimento
@@ -9,7 +16,7 @@ PWA de finanças pessoais (Laravel 12 + Livewire + Tailwind + SQLite), mobile-fi
 ```bash
 composer install && npm install
 cp .env.example .env && php artisan key:generate
-touch database/database.sqlite && php artisan migrate
+touch database/database.sqlite && php artisan migrate --seed   # usuário demo@financee.test / demo12345
 composer run dev        # servidor + vite
 php artisan test        # testes (Pest)
 ./vendor/bin/phpstan    # análise estática

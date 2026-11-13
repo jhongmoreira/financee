@@ -1,0 +1,5 @@
+@extends('errors.layout')
+@section('code', 'SESSÃO EXPIRADA')
+@section('title', 'Sua sessão expirou')
+@section('message', 'Por segurança, a página ficou muito tempo aberta. Recarregue e tente de novo; se pedir, entre novamente.')
+@section('button', 'Recarregar')

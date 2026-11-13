@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\CreditCard;
 use App\Models\Institution;
 use App\Services\InvoiceService;
+use App\Support\Reorder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,8 @@ use Livewire\Component;
 class Index extends Component
 {
     public bool $showArchived = false;
+
+    public bool $reordering = false;
 
     #[Locked]
     public ?int $editingId = null;
@@ -42,6 +45,12 @@ class Index extends Component
     public ?string $payment_account_id = null;
 
     public string $color = '#7c3aed';
+
+    public function move(int $id, int $direction): void
+    {
+        Reorder::move(CreditCard::query()->active()->ordered(), $id, $direction);
+        unset($this->cards);
+    }
 
     public function create(): void
     {
