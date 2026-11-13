@@ -18,11 +18,11 @@ php artisan test        # testes (Pest)
 ## Deploy (Hostoo)
 
 ```bash
-scripts/release.sh      # testes + build + abre PR para a branch production
+scripts/release.sh      # testes + build + PR para production + merge automático
 ```
 
 A Hostoo acompanha a branch `production` (que já contém `vendor/` e `public/build/`).
-Nada vai direto para `production`: o deploy acontece quando a PR do release é aprovada e mergeada.
+Cada deploy vira uma PR (histórico) que o script já mergeia; use `--no-merge` para revisar antes.
 O cron `* * * * * /usr/local/bin/ea-php84 ~/public_html/financee/artisan schedule:run` aplica
 migrations e caches automaticamente quando um novo `RELEASE` chega.
 `.env`, banco e storage de produção ficam em `~/financee-data/` (fora do deploy).

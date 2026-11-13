@@ -38,7 +38,7 @@
 2. Cria um worktree temporário da branch `production`.
 3. Copia o código de `main` (via `git archive`), roda `composer install --no-dev --optimize-autoloader` e `npm ci && npm run build`.
 4. Grava o arquivo `RELEASE` com o hash do commit e a data.
-5. Faz commit numa branch `release/<versão>` e abre uma **Pull Request para `production`** (via `gh`). O deploy só acontece quando a PR é aprovada e mergeada.
+5. Faz commit numa branch `release/<versão>`, abre uma **Pull Request para `production`** (via `gh`) e faz o merge automaticamente (`--no-merge` deixa a PR aberta para revisão).
 
 ## 0.5 Pós-deploy sem SSH
 - Comando `app:post-deploy`: compara `RELEASE` com o valor salvo em `storage/app/deployed_release`. Se forem diferentes, executa `optimize:clear`, `package:discover`, `migrate --force`, `optimize` e `storage:link` — **cada um em um processo PHP separado** (no mesmo processo, os caches eram gerados com a lista de pacotes antiga e o `@svg` aparecia como texto) — e só então grava a nova versão.

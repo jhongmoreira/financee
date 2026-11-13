@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# Gera um build de produção a partir da branch main e abre uma PULL REQUEST
-# para a branch "production" (acompanhada pela integração Git da Hostoo).
-# Nada é enviado direto para production: o deploy só acontece quando a PR
-# é aprovada e mergeada no GitHub.
+# Gera um build de produção a partir da branch main, abre uma PULL REQUEST
+# para a branch "production" (acompanhada pela integração Git da Hostoo) e
+# faz o merge automaticamente. A PR fica como histórico de cada deploy.
 # A branch production contém vendor/ e public/build/ prontos, porque a
 # Hostoo apenas copia os arquivos (não roda composer nem npm).
 #
-# Uso: scripts/release.sh            (testes + build + PR para production)
-#      scripts/release.sh --no-push  (só gera o commit local, para conferir)
+# Uso: scripts/release.sh             (testes + build + PR + merge = deploy)
+#      scripts/release.sh --no-merge  (abre a PR e deixa para revisão manual)
+#      scripts/release.sh --no-push   (só gera o commit local, para conferir)
 #
 set -euo pipefail
 
@@ -16,7 +16,9 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 PUSH=1
+MERGE=1
 [[ "${1:-}" == "--no-push" ]] && PUSH=0
+[[ "${1:-}" == "--no-merge" ]] && MERGE=0
 
 info() { printf '\033[1;34m▶ %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m✖ %s\033[0m\n' "$*" >&2; exit 1; }
@@ -113,8 +115,8 @@ ${CHANGES:-"- (sem novos commits de código)"}
 
 > O diff desta PR inclui \`vendor/\` e \`public/build/\`; revise o código pelo link acima.
 
-### Ao mergear
-A Hostoo atualiza o servidor e o cron aplica migrations e caches em até 1 minuto.
+### Deploy
+Ao mergear, a Hostoo atualiza o servidor e o cron aplica migrations e caches em até 1 minuto.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 MD
@@ -122,4 +124,11 @@ MD
 
 PR_URL="$(gh pr create --base production --head "$BRANCH" --title "Release ${RELEASE} (main@${COMMIT})" --body "$BODY")"
 info "PR aberta: ${PR_URL}"
-info "O deploy acontece quando a PR for aprovada e mergeada."
+
+if [[ $MERGE -eq 0 ]]; then
+    info "PR deixada aberta para revisão. O deploy acontece quando ela for mergeada."
+    exit 0
+fi
+
+gh pr merge "$PR_URL" --merge --delete-branch >/dev/null
+info "PR mergeada: release ${RELEASE} publicado. O cron aplica as migrations em até 1 minuto."
