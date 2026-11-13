@@ -12,8 +12,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Relatórios. Regime:
- *  - competência: pela data do lançamento (compra no cartão = data da compra);
+ * Relatórios. Compras no cartão contam sempre pelo VENCIMENTO da fatura (como no Organizze).
+ * Lançamentos em conta, pelo regime:
+ *  - competência: pela data do lançamento;
  *  - caixa: só efetivados, pela data em que foram pagos/recebidos.
  * Ajustes de saldo, transferências e investimentos ficam de fora.
  */
@@ -150,30 +151,55 @@ class ReportService
 
     /**
      * Lançamentos do período (para exportação).
-
      *
-
      * @return Builder<Transaction>
      */
     public function transactionsQuery(CarbonImmutable $start, CarbonImmutable $end, string $regime = 'competencia'): Builder
     {
-        $column = $regime === 'caixa' ? 'paid_at' : 'date';
-
-        return Transaction::query()->with(['category.parent', 'account', 'creditCard'])
-            ->whereBetween($column, [$start->toDateString(), $end->toDateString()])
-            ->orderBy($column)->orderBy('id');
+        return $this->inPeriod(Transaction::query()->with(['category.parent', 'account', 'creditCard', 'invoice']), $start, $end, $regime)
+            ->orderBy('date')->orderBy('id');
     }
 
-    /** @return array<int, int> category_id (0 = sem) => total */
+    /**
+     * Aplica o período conforme o regime. Cartão sempre pelo vencimento da fatura;
+     * em conta, pela data do lançamento (competência) ou do pagamento (caixa).
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    private function inPeriod(Builder $query, CarbonImmutable $start, CarbonImmutable $end, string $regime): Builder
+    {
+        if ($regime !== 'caixa') {
+            return $query->effectiveBetween($start, $end);
+        }
+
+        return $query->where(fn (Builder $q) => $q
+            ->where(fn (Builder $q) => $q->whereNull('credit_card_id')->whereNotNull('paid_at')
+                ->whereBetween('paid_at', [$start->toDateString(), $end->toDateString()]))
+            ->orWhere(fn (Builder $q) => $q->whereNotNull('credit_card_id')->whereIn('invoice_id',
+                Invoice::query()->select('id')->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])))
+        );
+    }
+
+    /**
+     * Totais por categoria. Em despesas, estornos no cartão abatem; em receitas, só lançamentos em conta.
+     *
+     * @return array<int, int> category_id (0 = sem) => total
+     */
     private function sumsByCategory(string $type, CarbonImmutable $start, CarbonImmutable $end, string $regime): array
     {
-        $column = $regime === 'caixa' ? 'paid_at' : 'date';
+        $query = Transaction::query()->withoutAdjustments();
 
-        return Transaction::query()->withoutAdjustments()->where('type', $type)
-            ->when($regime === 'caixa', fn ($q) => $q->whereNotNull('paid_at'))
-            ->whereBetween($column, [$start->toDateString(), $end->toDateString()])
-            ->selectRaw('COALESCE(category_id, 0) AS cid, SUM(amount) AS total')->groupBy('cid')
-            ->pluck('total', 'cid')->map(fn ($v) => (int) $v)->all();
+        if ($type === 'expense') {
+            $query->where(fn ($q) => $q->where('type', 'expense')->orWhereNotNull('credit_card_id'))
+                ->selectRaw("COALESCE(category_id, 0) AS cid, SUM(CASE WHEN type = 'expense' THEN amount ELSE -amount END) AS total");
+        } else {
+            $query->where('type', 'income')->whereNull('credit_card_id')
+                ->selectRaw('COALESCE(category_id, 0) AS cid, SUM(amount) AS total');
+        }
+
+        return $this->inPeriod($query, $start, $end, $regime)->groupBy('cid')
+            ->pluck('total', 'cid')->map(fn ($v) => (int) $v)->filter()->all();
     }
 
     /**
