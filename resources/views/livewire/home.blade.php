@@ -23,9 +23,24 @@
     <div class="space-y-5 pt-2">
         <div class="px-4">
             <div class="rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg shadow-emerald-900/20">
-                <p class="text-sm text-white/80">Saldo geral</p>
-                <x-ui.money :value="$total" class="mt-1 block text-3xl font-bold" />
-                <p class="mt-1 text-xs text-white/80">Previsto para o fim de {{ mb_strtolower($monthLabel) }}: <x-ui.money :value="$projected" class="font-semibold text-white" /></p>
+                <button type="button" wire:click="toggleBalanceView" class="tap -mx-1 flex items-center gap-1.5 rounded-lg px-1 text-sm text-white/80 hover:text-white"
+                        aria-label="{{ $balanceView === 'geral' ? 'Mostrar patrimônio total' : 'Mostrar saldo geral' }}">
+                    {{ $balanceView === 'geral' ? 'Saldo geral' : 'Patrimônio total' }}
+                    @svg('heroicon-m-arrows-right-left', 'size-4')
+                </button>
+                @if ($balanceView === 'geral')
+                    <x-ui.money :value="$total" class="mt-1 block text-3xl font-bold" />
+                    <p class="mt-1 text-xs text-white/80">Previsto para o fim de {{ mb_strtolower($monthLabel) }}: <x-ui.money :value="$projected" class="font-semibold text-white" /></p>
+                @else
+                    <x-ui.money :value="$total + $otherAccountsTotal + $investedTotal" class="mt-1 block text-3xl font-bold" />
+                    <div class="mt-2 space-y-0.5 text-xs text-white/85">
+                        <div class="flex justify-between gap-3"><span>Contas no saldo geral</span><x-ui.money :value="$total" class="font-semibold text-white" /></div>
+                        @if ($otherAccountsTotal !== 0)
+                            <div class="flex justify-between gap-3"><span>Outras contas</span><x-ui.money :value="$otherAccountsTotal" class="font-semibold text-white" /></div>
+                        @endif
+                        <div class="flex justify-between gap-3"><span>Investimentos</span><x-ui.money :value="$investedTotal" class="font-semibold text-white" /></div>
+                    </div>
+                @endif
                 <div class="mt-5 grid grid-cols-2 gap-3">
                     <a href="{{ route('transactions', ['tipo' => 'income']) }}" wire:navigate class="tap rounded-2xl bg-white/15 p-3">
                         <p class="flex items-center gap-1 text-xs text-white/80">@svg('heroicon-m-arrow-trending-up', 'size-4') Receitas do mês</p>
