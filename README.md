@@ -7,9 +7,10 @@ parcelamento, estornos e pagamentos parciais, lançamentos fixos e parcelados em
 orçamentos por categoria, investimentos (saldo separado), relatórios com gráficos, exportação CSV/PDF/JSON,
 notificações push, tema escuro e app instalável.
 
+- **Configurar em outro computador:** [`docs/desenvolvimento.md`](docs/desenvolvimento.md)
 - Operação em produção: [`docs/go-live.md`](docs/go-live.md)
-
-- Planejamento: [`docs/plano-geral.md`](docs/plano-geral.md) e [`docs/etapas/`](docs/etapas)
+- Planejamento e histórico: [`docs/plano-geral.md`](docs/plano-geral.md) e [`docs/etapas/`](docs/etapas)
+- Contexto para o Claude Code: [`CLAUDE.md`](CLAUDE.md)
 
 ## Desenvolvimento
 
@@ -17,6 +18,7 @@ notificações push, tema escuro e app instalável.
 composer install && npm install
 cp .env.example .env && php artisan key:generate
 touch database/database.sqlite && php artisan migrate --seed   # usuário demo@financee.test / demo12345
+php artisan storage:link
 composer run dev        # servidor + vite
 php artisan test        # testes (Pest)
 ./vendor/bin/phpstan    # análise estática
