@@ -104,24 +104,45 @@ class ReportService
     }
 
     /**
-     * Saldo geral (efetivado) no fim de cada mês.
-
+     * Saldo efetivado no fim de cada mês: total (contas incluídas no total) e por conta.
+     * O mês atual usa o saldo de hoje. Contas arquivadas aparecem só se tiveram saldo no período.
      *
-
-     * @return list<array{month: CarbonImmutable, label: string, balance: int}>
+     * @return array{
+     *     accounts: list<array{id: int, name: string, color: string, in_total: bool}>,
+     *     months: list<array{month: CarbonImmutable, label: string, balance: int, accounts: array<int, int>}>
+     * }
      */
     public function balanceHistory(CarbonImmutable $start, CarbonImmutable $end): array
     {
-        $ids = Account::query()->where('include_in_total', true)->pluck('id');
-        $rows = [];
+        $accounts = Account::query()->ordered()->get();
+        $months = [];
 
         for ($m = $start->startOfMonth(); $m->lessThanOrEqualTo($end); $m = $m->addMonthNoOverflow()) {
             $date = $m->endOfMonth()->min(CarbonImmutable::today());
             $balances = $this->balances->at($date);
-            $rows[] = ['month' => $m, 'label' => Month::label($m), 'balance' => (int) $ids->sum(fn ($id) => $balances[$id] ?? 0)];
+            $perAccount = [];
+            $total = 0;
+
+            foreach ($accounts as $account) {
+                $value = (int) ($balances[$account->id] ?? 0);
+                $perAccount[$account->id] = $value;
+                if ($account->include_in_total && ! $account->archived_at) {
+                    $total += $value;
+                }
+            }
+
+            $months[] = ['month' => $m, 'label' => Month::label($m), 'balance' => $total, 'accounts' => $perAccount];
         }
 
-        return $rows;
+        $visible = $accounts->filter(fn (Account $a) => ! $a->archived_at
+            || collect($months)->contains(fn (array $row) => $row['accounts'][$a->id] !== 0));
+
+        return [
+            'accounts' => $visible->map(fn (Account $a) => [
+                'id' => $a->id, 'name' => $a->name, 'color' => $a->color, 'in_total' => $a->include_in_total && ! $a->archived_at,
+            ])->values()->all(),
+            'months' => $months,
+        ];
     }
 
     /**

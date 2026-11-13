@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Livewire\Reports\Index as ReportsIndex;
 use App\Models\Account;
 use App\Models\Budget;
 use App\Models\Category;
@@ -15,6 +16,7 @@ use App\Models\InvoicePayment;
 use App\Models\Recurrence;
 use App\Models\Transaction;
 use App\Models\Transfer;
+use App\Services\InvestmentService;
 use App\Services\MonthSummary;
 use App\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -65,29 +67,66 @@ class ExportController
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /** Relatório do período em PDF. */
-    public function pdf(Request $request, MonthSummary $summary): Response
+    /** Relatório do período em PDF, com as seções escolhidas (padrão: todas). */
+    public function pdf(Request $request): Response
     {
+        $data = $this->pdfData($request);
+        [$start, $end] = [$data['start'], $data['end']];
+
+        // Muitas contas no saldo: página deitada para caber as colunas
+        $landscape = $data['history'] && count($data['history']['accounts']) > 4;
+
+        $pdf = Pdf::loadView('exports.report', $data)->setPaper('a4', $landscape ? 'landscape' : 'portrait')
+            ->setOption('isFontSubsettingEnabled', true);
+
+        return $pdf->download('financee-relatorio-'.$start->format('Ymd').'-'.$end->format('Ymd').'.pdf');
+    }
+
+    /**
+     * Dados do relatório em PDF (separado para poder ser testado).
+     *
+     * @return array<string, mixed>
+     */
+    public function pdfData(Request $request): array
+    {
+        $summary = app(MonthSummary::class);
+        $investments = app(InvestmentService::class);
         [$start, $end, $regime] = $this->range($request);
 
-        $transactions = $this->reports->transactionsQuery($start, $end, $regime)->limit(2000)->get();
-        $expenses = $this->reports->byCategory('expense', $start, $end, $regime);
-        $incomes = $this->reports->byCategory('income', $start, $end, $regime);
+        $all = array_keys(ReportsIndex::PDF_SECTIONS);
+        $asked = array_filter(explode(',', $request->string('secoes')->toString()));
+        $sections = $asked ? array_values(array_intersect($all, $asked)) : $all;
+        $has = fn (string $s) => in_array($s, $sections, true);
 
-        $pdf = Pdf::loadView('exports.report', [
+        $expenses = $has('resumo') || $has('despesas') ? $this->reports->byCategory('expense', $start, $end, $regime) : [];
+        $incomes = $has('resumo') || $has('receitas') ? $this->reports->byCategory('income', $start, $end, $regime) : [];
+
+        $data = [
             'user' => Auth::user(),
             'start' => $start,
             'end' => $end,
             'regime' => $regime,
-            'transactions' => $transactions,
+            'sections' => $sections,
+            'titles' => ReportsIndex::PDF_SECTIONS,
             'expenses' => $expenses,
             'incomes' => $incomes,
             'totalIncome' => (int) array_sum(array_column($incomes, 'total')),
             'totalExpense' => (int) array_sum(array_column($expenses, 'total')),
             'balance' => $summary->currentTotal(),
-        ])->setPaper('a4')->setOption('isFontSubsettingEnabled', true);
+            'history' => $has('saldo') ? $this->reports->balanceHistory($start, $end->min(CarbonImmutable::today())) : null,
+            'cards' => $has('cartoes') ? $this->reports->invoicesByCard($start, $end) : null,
+            'transactions' => $has('lancamentos') ? $this->reports->transactionsQuery($start, $end, $regime)->limit(2000)->get() : collect(),
+            'investments' => null,
+        ];
 
-        return $pdf->download('financee-relatorio-'.$start->format('Ymd').'-'.$end->format('Ymd').'.pdf');
+        if ($has('investimentos')) {
+            $assets = InvestmentAsset::query()->whereNull('archived_at')->with('portfolio')
+                ->whereHas('portfolio', fn ($q) => $q->whereNull('archived_at'))->orderBy('name')->get();
+            $stats = $investments->stats($assets);
+            $data['investments'] = ['assets' => $assets, 'stats' => $stats, 'total' => $investments->sum($stats)];
+        }
+
+        return $data;
     }
 
     /** Todos os dados do usuário em JSON (backup pessoal / LGPD). */
