@@ -1,10 +1,94 @@
 @import 'tailwindcss';
 
 @source '../**/*.blade.php';
-@source '../**/*.js';
+@source '../js/app.js';
+@source '../../app/**/*.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+/*
+| Tokens de cor. As telas usam bg-canvas, bg-card, text-ink, text-muted,
+| border-line, text-income, text-expense... e o tema escuro só redefine as
+| variáveis, sem precisar de "dark:" em todo lugar.
+*/
+:root {
+    --canvas: #f3f4f6;
+    --card: #ffffff;
+    --card-hover: #f9fafb;
+    --line: #e5e7eb;
+    --ink: #111827;
+    --muted: #6b7280;
+    --income: #059669;
+    --expense: #e11d48;
+    --brand: #059669;
+    --brand-strong: #047857;
+    --brand-soft: #d1fae5;
+    color-scheme: light;
+}
+
+.dark {
+    --canvas: #0b0f14;
+    --card: #151a21;
+    --card-hover: #1b222b;
+    --line: #262e38;
+    --ink: #f3f4f6;
+    --muted: #9ca3af;
+    --income: #34d399;
+    --expense: #fb7185;
+    --brand: #10b981;
+    --brand-strong: #34d399;
+    --brand-soft: #064e3b;
+    color-scheme: dark;
+}
+
+@theme inline {
     --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --color-canvas: var(--canvas);
+    --color-card: var(--card);
+    --color-card-hover: var(--card-hover);
+    --color-line: var(--line);
+    --color-ink: var(--ink);
+    --color-muted: var(--muted);
+    --color-income: var(--income);
+    --color-expense: var(--expense);
+    --color-brand: var(--brand);
+    --color-brand-strong: var(--brand-strong);
+    --color-brand-soft: var(--brand-soft);
+}
+
+@utility pt-safe {
+    padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+}
+
+@layer base {
+    html {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        overscroll-behavior-y: none;
+    }
+
+    /* Evita zoom automático do iOS em campos de formulário */
+    input, select, textarea {
+        font-size: 16px;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+/* Feedback de toque em elementos clicáveis */
+.tap {
+    @apply transition active:scale-[0.97] active:opacity-80 select-none;
 }
