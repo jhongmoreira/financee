@@ -21,7 +21,7 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
 
-// Lançamentos fixos: estende a geração (12 meses à frente) e efetiva débitos automáticos.
+// Lançamentos fixos: estende a geração (até 31/12 do ano seguinte) e efetiva débitos automáticos.
 Artisan::command('recurrences:generate', function (RecurrenceService $service) {
     $this->info($service->runDaily().' lançamento(s) fixo(s) gerado(s).');
 })->purpose('Gera lançamentos fixos futuros e efetiva débitos automáticos');
