@@ -5,10 +5,13 @@ namespace App\Livewire\Transactions;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\InvestmentMovement;
+use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\Transaction;
 use App\Models\Transfer;
+use App\Services\InvoiceService;
 use App\Services\MonthSummary;
+use App\Support\Money;
 use App\Support\Month;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -21,7 +24,7 @@ use Livewire\Component;
 /**
  * Extrato do mês: lançamentos e transferências agrupados por dia.
  *
- * @phpstan-type Row array{kind: string, id: int, date: CarbonImmutable, day: string, description: string, subtitle: string, amount: int, neutral?: bool, paid: bool, overdue: bool, icon: string, color: string, type: string, href?: string|null}
+ * @phpstan-type Row array{kind: string, id: int, date: CarbonImmutable, day: string, description: string, subtitle: string, amount: int, neutral?: bool, paid: bool, overdue: bool, icon: string, color: string, type: string, href?: string|null, hideStatus?: bool}
  */
 #[Title('Lançamentos')]
 class Index extends Component
@@ -101,10 +104,14 @@ class Index extends Component
         $rows = collect();
         $search = trim($this->search);
 
+        // Sem busca/categoria, o cartão aparece como uma linha por fatura (como no Organizze).
+        $showCardItems = $this->category !== '' || $search !== '';
+
         if ($this->type !== 'transfer') {
             $categoryIds = $this->categoryIds();
 
-            Transaction::query()->inMonth($month)->with(['category', 'account', 'creditCard'])
+            Transaction::query()->inMonth($month)->with(['category', 'account', 'creditCard', 'invoice'])
+                ->when(! $showCardItems, fn ($q) => $q->whereNull('credit_card_id'))
                 ->when(in_array($this->type, ['income', 'expense'], true), fn ($q) => $q->where('type', $this->type))
                 ->when($this->account !== '', fn ($q) => $q->where('account_id', (int) $this->account))
                 ->when($categoryIds, fn ($q) => $q->whereIn('category_id', $categoryIds))
@@ -113,16 +120,18 @@ class Index extends Component
                 ->when($search !== '', fn ($q) => $q->where('description', 'like', '%'.$search.'%'))
                 ->get()
                 ->each(function (Transaction $t) use ($rows) {
+                    $effective = $t->effectiveDate();
                     $rows->push([
                         'kind' => 'transaction',
                         'id' => $t->id,
-                        'date' => $t->date,
-                        'day' => $t->date->toDateString(),
+                        'date' => $effective,
+                        'day' => $effective->toDateString(),
                         'description' => $t->description.($t->installmentLabel() ? ' ('.$t->installmentLabel().')' : ''),
                         'subtitle' => collect([
                             $t->recurrence_id ? 'Fixo' : null,
                             $t->is_adjustment ? 'Ajuste de saldo' : ($t->isCard() && $t->type === 'income' ? 'Estorno' : $t->category?->name),
                             $t->account->name ?? ($t->creditCard ? 'Cartão '.$t->creditCard->name : null),
+                            $t->isCard() ? 'compra '.$t->date->format('d/m').' · fatura '.$t->invoice?->shortLabel() : null,
                         ])->filter()->implode(' · '),
                         'amount' => $t->signedAmount(),
                         'paid' => $t->isPaid(),
@@ -163,10 +172,10 @@ class Index extends Component
         }
 
         // Pagamentos de fatura (saem da conta; não são despesa por categoria)
-        if (in_array($this->type, ['', 'expense'], true) && $this->category === '' && $this->status !== 'pending') {
+        if ($this->account !== '' && in_array($this->type, ['', 'expense'], true) && $this->category === '' && $this->status !== 'pending') {
             InvoicePayment::query()->whereBetween('paid_at', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
                 ->with(['invoice.creditCard', 'account'])
-                ->when($this->account !== '', fn ($q) => $q->where('account_id', (int) $this->account))
+                ->where('account_id', (int) $this->account)
                 ->get()
                 ->each(function (InvoicePayment $p) use ($rows, $search) {
                     $description = 'Pagamento fatura '.($p->invoice->creditCard->name ?? '');
@@ -189,6 +198,45 @@ class Index extends Component
                         'href' => $p->invoice ? route('cards.invoice', ['card' => $p->invoice->credit_card_id, 'mes' => $p->invoice->reference_month]) : null,
                     ]);
                 });
+        }
+
+        // Faturas de cartão que vencem no mês: uma linha por fatura, com o total
+        if ($this->account === '' && ! $showCardItems && in_array($this->type, ['', 'expense'], true)) {
+            $invoices = Invoice::query()->with('creditCard')
+                ->whereBetween('due_date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+                ->get();
+            $summaries = app(InvoiceService::class)->summaries($invoices);
+            $counts = Transaction::query()->whereIn('invoice_id', $invoices->pluck('id'))
+                ->selectRaw('invoice_id, COUNT(*) AS n')->groupBy('invoice_id')->pluck('n', 'invoice_id');
+
+            foreach ($invoices as $invoice) {
+                $sum = $summaries[$invoice->id];
+                $isPaid = $sum['status'] === 'paid';
+
+                if (($sum['total'] === 0 && $sum['paid'] === 0)
+                    || ($this->status === 'paid' && ! $isPaid) || ($this->status === 'pending' && $isPaid)) {
+                    continue;
+                }
+
+                $n = (int) ($counts[$invoice->id] ?? 0);
+                $rows->push([
+                    'kind' => 'invoice',
+                    'id' => $invoice->id,
+                    'date' => $invoice->due_date,
+                    'day' => $invoice->due_date->toDateString(),
+                    'description' => 'Fatura '.($invoice->creditCard->name ?? 'Cartão'),
+                    'subtitle' => $sum['label'].' · '.$n.' '.($n === 1 ? 'lançamento' : 'lançamentos')
+                        .($sum['paid'] > 0 && ! $isPaid ? ' · falta '.Money::format(max(0, $sum['remaining'])) : ''),
+                    'amount' => -$sum['total'],
+                    'paid' => $isPaid,
+                    'overdue' => $sum['status'] === 'overdue',
+                    'icon' => 'credit-card',
+                    'color' => $invoice->creditCard->color ?? '#7c3aed',
+                    'type' => 'invoice',
+                    'href' => route('cards.invoice', ['card' => $invoice->credit_card_id, 'mes' => $invoice->reference_month]),
+                    'hideStatus' => true,
+                ]);
+            }
         }
 
         // Aportes/resgates/rendimentos de investimentos que movimentaram uma conta

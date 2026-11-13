@@ -25,7 +25,7 @@ beforeEach(function () {
 
 afterEach(fn () => CarbonImmutable::setTestNow());
 
-it('soma gasto da categoria e subcategorias, em conta e cartão, efetivado e previsto', function () {
+it('soma gasto da categoria e subcategorias; cartão conta no mês do vencimento da fatura', function () {
     $card = CreditCard::create(['name' => 'C', 'brand' => 'visa', 'limit' => 100000, 'closing_day' => 3, 'due_day' => 10, 'color' => '#7c3aed']);
     Transaction::factory()->create(['account_id' => $this->account->id, 'category_id' => $this->food->id, 'amount' => 10000, 'date' => '2026-11-02']);
     Transaction::factory()->pending()->create(['account_id' => $this->account->id, 'category_id' => $this->market->id, 'amount' => 20000, 'date' => '2026-11-25']);
@@ -33,9 +33,12 @@ it('soma gasto da categoria e subcategorias, em conta e cartão, efetivado e pre
     Transaction::factory()->create(['account_id' => $this->account->id, 'category_id' => $this->food->id, 'amount' => 99999, 'date' => '2026-10-30']);
     $this->service->set($this->food, 50000, null);
 
-    $row = $this->service->forMonth(CarbonImmutable::parse('2026-11-01'))->first();
+    // A compra no cartão de 10/11 cai na fatura que vence em 10/12: conta em dezembro (como no Organizze)
+    $nov = $this->service->forMonth(CarbonImmutable::parse('2026-11-01'))->first();
+    $dec = $this->service->forMonth(CarbonImmutable::parse('2026-12-01'))->first();
 
-    expect($row)->toMatchArray(['budget' => 50000, 'spent' => 45000, 'paid' => 25000, 'remaining' => 5000, 'pct' => 90, 'is_default' => true]);
+    expect($nov)->toMatchArray(['budget' => 50000, 'spent' => 30000, 'paid' => 10000, 'remaining' => 20000, 'pct' => 60, 'is_default' => true])
+        ->and($dec)->toMatchArray(['spent' => 15000]);
 });
 
 it('orçamento do mês substitui o padrão e copia do mês anterior', function () {

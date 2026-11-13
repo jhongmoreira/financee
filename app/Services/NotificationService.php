@@ -99,7 +99,8 @@ class NotificationService
             return;
         }
         $rootId = $category->parent_id ?? $category->id;
-        $row = $this->budgets->forMonth($transaction->date->startOfMonth())->first(fn (array $r) => $r['category']->id === $rootId);
+        $month = $transaction->effectiveDate()->startOfMonth(); // cartão: mês do vencimento da fatura
+        $row = $this->budgets->forMonth($month)->first(fn (array $r) => $r['category']->id === $rootId);
 
         if (! $row) {
             return;
@@ -107,9 +108,9 @@ class NotificationService
 
         foreach ([100, 80] as $threshold) {
             if ($row['pct'] >= $threshold) {
-                $this->sendOnce($user, "budget:{$rootId}:".Month::key($transaction->date).":{$threshold}", new FinanceAlert(
+                $this->sendOnce($user, "budget:{$rootId}:".Month::key($month).":{$threshold}", new FinanceAlert(
                     $threshold === 100 ? "Orçamento de {$row['category']->name} estourado" : "{$row['pct']}% do orçamento de {$row['category']->name}",
-                    'Gasto: '.Money::format($row['spent']).' de '.Money::format($row['budget']).' em '.mb_strtolower(Month::label($transaction->date)).'.',
+                    'Gasto: '.Money::format($row['spent']).' de '.Money::format($row['budget']).' em '.mb_strtolower(Month::label($month)).'.',
                     route('planning', absolute: false), 'chart-pie', 'budget-'.$rootId,
                 ));
                 break; // só o maior limite atingido

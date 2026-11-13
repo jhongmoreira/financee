@@ -106,7 +106,35 @@ class Transaction extends Model
     /** @param Builder<Transaction> $query */
     public function scopeInMonth(Builder $query, CarbonImmutable $month): void
     {
-        $query->whereBetween('date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()]);
+        $query->effectiveBetween($month->startOfMonth(), $month->endOfMonth());
+    }
+
+    /**
+     * Período "efetivo" do lançamento (como no Organizze):
+     *  - em conta: pela data do lançamento;
+     *  - no cartão: pela data de VENCIMENTO da fatura (é quando o dinheiro sai).
+     *
+     * @param  Builder<Transaction>  $query
+     */
+    public function scopeEffectiveBetween(Builder $query, CarbonImmutable $start, CarbonImmutable $end): void
+    {
+        $query->where(fn (Builder $q) => $q
+            ->where(fn (Builder $q) => $q->whereNull('credit_card_id')->whereBetween('date', [$start->toDateString(), $end->toDateString()]))
+            ->orWhere(fn (Builder $q) => $q->whereNotNull('credit_card_id')->whereIn('invoice_id',
+                Invoice::query()->select('id')->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])))
+        );
+    }
+
+    /** Data efetiva: compra no cartão conta no vencimento da fatura. */
+    public function effectiveDate(): CarbonImmutable
+    {
+        if (! $this->isCard() || ! $this->invoice_id) {
+            return $this->date;
+        }
+
+        $invoice = $this->relationLoaded('invoice') ? $this->invoice : Invoice::query()->find($this->invoice_id);
+
+        return $invoice->due_date ?? $this->date;
     }
 
     /** @param Builder<Transaction> $query */

@@ -11,8 +11,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Orçamentos por categoria (de despesa).
- * Gasto = despesas do mês (efetivadas + previstas, em conta e no cartão pela data da compra)
- * na categoria e nas subcategorias. Ajustes de saldo não contam.
+ * Gasto = despesas do mês (efetivadas + previstas) na categoria e nas subcategorias:
+ * em conta pela data; no cartão pelo vencimento da fatura (estornos abatem).
+ * Ajustes de saldo não contam.
  */
 class BudgetService
 {
@@ -115,8 +116,12 @@ class BudgetService
     {
         $parents = Category::query()->whereNotNull('parent_id')->pluck('parent_id', 'id');
 
-        $rows = Transaction::query()->inMonth($month)->withoutAdjustments()->where('type', 'expense')->whereNotNull('category_id')
-            ->selectRaw('category_id, SUM(amount) AS total, SUM(CASE WHEN paid_at IS NOT NULL THEN amount ELSE 0 END) AS paid')
+        // Despesas + estornos no cartão (que abatem). Cartão conta no mês do vencimento da fatura.
+        $rows = Transaction::query()->inMonth($month)->withoutAdjustments()->whereNotNull('category_id')
+            ->where(fn ($q) => $q->where('type', 'expense')->orWhereNotNull('credit_card_id'))
+            ->selectRaw("category_id,
+                SUM(CASE WHEN type = 'expense' THEN amount ELSE -amount END) AS total,
+                SUM(CASE WHEN paid_at IS NULL THEN 0 WHEN type = 'expense' THEN amount ELSE -amount END) AS paid")
             ->groupBy('category_id')->get();
 
         $result = [];

@@ -13,6 +13,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\InvoiceService;
 use App\Services\MonthSummary;
+use App\Services\ReportService;
 use Carbon\CarbonImmutable;
 use Livewire\Livewire;
 
@@ -93,14 +94,52 @@ it('paga a fatura pela tela e desfaz', function () {
     expect($this->account->fresh()->balance())->toBe(500000);
 });
 
-it('extrato mostra compra no cartão e pagamento de fatura', function () {
+it('extrato mostra a fatura como uma linha no mês do vencimento (como no Organizze)', function () {
     $service = app(InvoiceService::class);
-    $service->createPurchase($this->card, 'Farmácia', null, CarbonImmutable::parse('2026-11-05'), 3000);
-    $service->pay($service->byReference($this->card, '2026-11'), $this->account, 1000, CarbonImmutable::parse('2026-11-08'));
+    $service->createPurchase($this->card, 'Farmácia', null, CarbonImmutable::parse('2026-11-05'), 3000); // fatura vence 10/12
+    $service->createPurchase($this->card, 'Mercado', null, CarbonImmutable::parse('2026-11-06'), 7000);
 
-    Livewire::test(Statement::class)
-        ->assertSee('Farmácia')->assertSee('Cartão Roxinho')
-        ->assertSee('Pagamento fatura Roxinho');
+    // Novembro: nada do cartão
+    Livewire::test(Statement::class)->assertDontSee('Farmácia')->assertDontSee('Fatura Roxinho');
+
+    // Dezembro: só a linha da fatura, com o total, levando para a tela da fatura
+    Livewire::test(Statement::class)->set('month', '2026-12')
+        ->assertSee('Fatura Roxinho')->assertSee('R$ 100,00')->assertSee('2 lançamentos')
+        ->assertDontSee('Farmácia')->assertSee(route('cards.invoice', ['card' => $this->card->id, 'mes' => '2026-12']), false);
+
+    // Buscando, as compras aparecem individualmente (no mês da fatura, com a data da compra)
+    Livewire::test(Statement::class)->set('month', '2026-12')->set('search', 'Farm')
+        ->assertSee('Farmácia')->assertSee('compra 05/11')->assertDontSee('Fatura Roxinho');
+});
+
+it('filtrando por conta, o extrato mostra o pagamento da fatura (o que sai da conta)', function () {
+    $service = app(InvoiceService::class);
+    $service->createPurchase($this->card, 'Farmácia', null, CarbonImmutable::parse('2026-10-20'), 3000); // vence 10/11
+    $service->pay($service->byReference($this->card, '2026-11'), $this->account, 3000, CarbonImmutable::parse('2026-11-08'));
+
+    Livewire::test(Statement::class)->set('account', (string) $this->account->id)
+        ->assertSee('Pagamento fatura Roxinho')->assertDontSee('Farmácia');
+
+    Livewire::test(Statement::class)->assertSee('Fatura Roxinho')->assertSee('Paga')->assertDontSee('Pagamento fatura');
+});
+
+it('totais do mês contam o cartão no vencimento da fatura e estornos abatem', function () {
+    $service = app(InvoiceService::class);
+    $service->createPurchase($this->card, 'Loja', null, CarbonImmutable::parse('2026-11-05'), 10000);
+    $service->createPurchase($this->card, 'Estorno loja', null, CarbonImmutable::parse('2026-11-06'), 2500, isRefund: true);
+
+    $summary = app(MonthSummary::class);
+    expect($summary->totals(CarbonImmutable::parse('2026-11-01'))['expense'])->toBe(0)
+        ->and($summary->totals(CarbonImmutable::parse('2026-12-01')))->toMatchArray(['expense' => 7500, 'income' => 0]);
+});
+
+it('relatório por categoria conta o cartão no mês da fatura', function () {
+    app(InvoiceService::class)->createPurchase($this->card, 'Pizza', $this->food->id, CarbonImmutable::parse('2026-11-05'), 6000);
+
+    $reports = app(ReportService::class);
+    expect($reports->byCategory('expense', CarbonImmutable::parse('2026-11-01'), CarbonImmutable::parse('2026-11-30')))->toBe([])
+        ->and($reports->byCategory('expense', CarbonImmutable::parse('2026-12-01'), CarbonImmutable::parse('2026-12-31'))[0])
+        ->toMatchArray(['name' => 'Alimentação', 'total' => 6000]);
 });
 
 it('lista cartões com fatura atual e não exclui cartão com compras', function () {

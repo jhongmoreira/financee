@@ -59,8 +59,8 @@ it('exporta CSV para Excel pt-BR', function () {
     $csv = $response->streamedContent();
 
     expect($csv)->toStartWith("\xEF\xBB\xBF")
-        ->and($csv)->toContain('Data;Descrição;Categoria;Subcategoria')
-        ->and($csv)->toContain('03/11/2026;"Feira da semana";Alimentação;Mercado;Nubank;Despesa;-300,00;Efetivado')
+        ->and($csv)->toContain('Data;Descrição;Categoria;Subcategoria;Conta/Cartão;Fatura')
+        ->and($csv)->toContain('03/11/2026;"Feira da semana";Alimentação;Mercado;Nubank;;Despesa;-300,00;Efetivado')
         ->and(substr_count($csv, "\n"))->toBe(5); // cabeçalho + 4 de novembro
 });
 
