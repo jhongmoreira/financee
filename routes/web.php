@@ -5,6 +5,7 @@ use App\Livewire\Accounts;
 use App\Livewire\Cards;
 use App\Livewire\Categories;
 use App\Livewire\Home;
+use App\Livewire\Investments;
 use App\Livewire\More;
 use App\Livewire\Planning;
 use App\Livewire\Profile;
@@ -28,4 +29,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/cartoes/{card}/fatura', Cards\Invoice::class)->name('cards.invoice');
     Route::get('/categorias', Categories\Index::class)->name('categories');
     Route::get('/fixos', Recurrences\Index::class)->name('recurrences');
+    Route::get('/investimentos', Investments\Index::class)->name('investments');
+    Route::get('/investimentos/ativo/{asset}', Investments\Asset::class)->name('investments.asset');
 });

@@ -71,6 +71,7 @@ class Account extends Model
     {
         return $this->transactions()->exists()
             || InvoicePayment::query()->where('account_id', $this->id)->exists()
+            || InvestmentMovement::query()->where('account_id', $this->id)->exists()
             || Transfer::query()->where(fn ($q) => $q->where('from_account_id', $this->id)->orWhere('to_account_id', $this->id))->exists();
     }
 

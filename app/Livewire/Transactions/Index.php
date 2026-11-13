@@ -4,6 +4,7 @@ namespace App\Livewire\Transactions;
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\InvestmentMovement;
 use App\Models\InvoicePayment;
 use App\Models\Transaction;
 use App\Models\Transfer;
@@ -186,6 +187,36 @@ class Index extends Component
                         'color' => $p->invoice->creditCard->color ?? '#7c3aed',
                         'type' => 'payment',
                         'href' => $p->invoice ? route('cards.invoice', ['card' => $p->invoice->credit_card_id, 'mes' => $p->invoice->reference_month]) : null,
+                    ]);
+                });
+        }
+
+        // Aportes/resgates/rendimentos de investimentos que movimentaram uma conta
+        if (in_array($this->type, ['', 'transfer'], true) && $this->category === '' && $this->status !== 'pending') {
+            InvestmentMovement::query()->whereNotNull('account_id')->where('type', '!=', 'valuation')
+                ->whereBetween('date', [$month->startOfMonth()->toDateString(), $month->endOfMonth()->toDateString()])
+                ->with(['asset', 'account'])
+                ->when($this->account !== '', fn ($q) => $q->where('account_id', (int) $this->account))
+                ->get()
+                ->each(function (InvestmentMovement $m) use ($rows, $search) {
+                    $description = $m->typeLabel().': '.($m->asset->name ?? '');
+                    if ($search !== '' && ! str_contains(mb_strtolower($description), mb_strtolower($search))) {
+                        return;
+                    }
+                    $rows->push([
+                        'kind' => 'investment',
+                        'id' => $m->id,
+                        'date' => $m->date,
+                        'day' => $m->date->toDateString(),
+                        'description' => $description,
+                        'subtitle' => 'Investimentos · '.($m->account->name ?? ''),
+                        'amount' => $m->accountEffect(),
+                        'paid' => true,
+                        'overdue' => false,
+                        'icon' => 'arrow-trending-up',
+                        'color' => '#4f46e5',
+                        'type' => 'investment',
+                        'href' => route('investments.asset', $m->asset_id),
                     ]);
                 });
         }

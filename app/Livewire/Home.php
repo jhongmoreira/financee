@@ -4,9 +4,11 @@ namespace App\Livewire;
 
 use App\Models\Account;
 use App\Models\CreditCard;
+use App\Models\InvestmentPortfolio;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\Transfer;
+use App\Services\InvestmentService;
 use App\Services\InvoiceService;
 use App\Services\MonthSummary;
 use App\Support\Month;
@@ -32,7 +34,7 @@ class Home extends Component
         $this->dispatch('toast', message: 'Marcado como efetivado.');
     }
 
-    public function render(MonthSummary $summary, InvoiceService $invoices): View
+    public function render(MonthSummary $summary, InvoiceService $invoices, InvestmentService $investments): View
     {
         $month = CarbonImmutable::today()->startOfMonth();
 
@@ -78,6 +80,8 @@ class Home extends Component
             'totals' => $summary->totals($month),
             'accounts' => Account::query()->active()->ordered()->with('institution')->get(),
             'cardsCount' => $cards->count(),
+            'investedTotal' => $investments->totalValue(),
+            'hasInvestments' => InvestmentPortfolio::query()->exists(),
             'cards' => $cards,
             'currentInvoices' => $currentInvoices,
             'invoiceSummaries' => $invoices->summaries($currentInvoices->values()),
