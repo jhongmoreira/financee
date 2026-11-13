@@ -53,3 +53,12 @@ it('seeder de demonstração gera dados consistentes e todas as telas abrem', fu
     $this->get(route('cards.invoice', $card))->assertOk();
     $this->get(route('investments.asset', InvestmentAsset::firstOrFail()))->assertOk();
 });
+
+it('a limpeza de contas de teste automatizado não afeta usuários reais', function () {
+    $real = User::factory()->create(['email' => 'pessoa@gmail.com']);
+    $bot = User::factory()->create(['email' => 'teste-automatico-123@financee.test']);
+
+    (require database_path('migrations/2026_11_13_190000_remove_automated_test_accounts.php'))->up();
+
+    expect(User::find($real->id))->not->toBeNull()->and(User::find($bot->id))->toBeNull();
+});
