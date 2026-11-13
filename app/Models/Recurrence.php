@@ -29,7 +29,7 @@ class Recurrence extends Model
     /** frequência => [rótulo, meses entre ocorrências, dias entre ocorrências (quando meses = 0)] */
     public const FREQUENCIES = [
         'weekly' => ['Semanal', 0, 7],
-        'biweekly' => ['Quinzenal (a cada 2 semanas, mesmo dia da semana)', 0, 14],
+        'biweekly' => ['Quinzenal', 0, 14], // a cada 2 semanas: sempre no mesmo dia da semana
         'monthly' => ['Mensal', 1, 0],
         'bimonthly' => ['Bimestral', 2, 0],
         'quarterly' => ['Trimestral', 3, 0],
@@ -85,8 +85,7 @@ class Recurrence extends Model
 
     public function frequencyLabel(): string
     {
-        // Nas listas, sem a explicação entre parênteses ("Quinzenal (a cada 2 semanas...)" → "Quinzenal")
-        return trim(explode(' (', self::FREQUENCIES[$this->frequency][0] ?? 'Mensal')[0]);
+        return self::FREQUENCIES[$this->frequency][0] ?? 'Mensal';
     }
 
     /** Valor equivalente por mês (para "total comprometido por mês"). */
