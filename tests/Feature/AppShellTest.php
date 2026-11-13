@@ -36,3 +36,12 @@ it('publica o manifest do PWA', function () {
         ->and(collect($manifest['icons'])->pluck('src')->all())
         ->each(fn ($src) => $src->toBeString()->and(file_exists(public_path(ltrim($src->value, '/'))))->toBeTrue());
 });
+
+it('tem imagens de abertura (splash) do iPhone/iPad e todas existem', function () {
+    $html = $this->get('/login')->assertOk()->getContent();
+    preg_match_all('#rel="apple-touch-startup-image" href="([^"]+)" media="([^"]+)"#', $html, $m);
+
+    expect($m[1])->toHaveCount(17)
+        ->and(collect($m[1])->every(fn ($href) => file_exists(public_path(ltrim($href, '/')))))->toBeTrue()
+        ->and(collect($m[2])->unique())->toHaveCount(17); // um media query por tamanho de tela
+});
