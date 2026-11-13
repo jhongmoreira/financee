@@ -1,5 +1,7 @@
 # Etapa 3 — Lançamentos e transferências
 
+> **Status (13/11/2026):** implementada. Diferenças em relação ao plano: exclusão é definitiva (sem soft delete); o formulário abre direto pelo "+" (sem menu intermediário), com tipo Despesa já selecionado; "Despesa no cartão" entra na Etapa 4. Pendências da Etapa 2 resolvidas: saldo calculado, conta com lançamentos só pode ser arquivada, categoria usada pede destino ao excluir. Deslizar item para pagar/excluir ficou como botão "Pagar/Receber" na própria linha.
+
 ## 3.1 Tabela `transactions`
 ```
 id, user_id,

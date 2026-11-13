@@ -76,6 +76,13 @@
 
             <x-ui.button class="w-full">{{ $editingId ? 'Salvar alterações' : 'Criar' }}</x-ui.button>
 
+            @if ($editing && $usage)
+                <div class="rounded-2xl border border-line p-4">
+                    <p class="mb-3 text-sm text-muted">Esta categoria tem <strong class="text-ink">{{ $usage }} {{ $usage === 1 ? 'lançamento' : 'lançamentos' }}</strong>. Para excluí-la, escolha para onde movê-los:</p>
+                    <x-ui.select name="replacement_id" wire:model="replacement_id" :options="$replacements" placeholder="Mover lançamentos para..." aria-label="Categoria de destino" />
+                </div>
+            @endif
+
             @if ($editing)
                 <x-ui.button type="button" variant="secondary" class="w-full !text-rose-600 dark:!text-rose-400" wire:click="delete"
                     wire:confirm="Excluir “{{ $editing->name }}”{{ $editing->children_count ? ' e suas '.$editing->children_count.' subcategorias' : '' }}?">
