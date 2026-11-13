@@ -31,7 +31,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'type', 'description', 'notes', 'amount', 'date', 'paid_at', 'account_id', 'category_id', 'is_adjustment',
-        'credit_card_id', 'invoice_id', 'installment_plan_id', 'installment_number', 'installment_total',
+        'credit_card_id', 'invoice_id', 'installment_plan_id', 'installment_number', 'installment_total', 'recurrence_id',
     ];
 
     protected function casts(): array
@@ -79,6 +79,12 @@ class Transaction extends Model
     public function installmentPlan(): BelongsTo
     {
         return $this->belongsTo(InstallmentPlan::class);
+    }
+
+    /** @return BelongsTo<Recurrence, $this> */
+    public function recurrence(): BelongsTo
+    {
+        return $this->belongsTo(Recurrence::class);
     }
 
     public function isCard(): bool

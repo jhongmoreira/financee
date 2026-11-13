@@ -66,6 +66,21 @@
                     @endif
                 @endif
 
+                {{-- Lançamento fixo em edição --}}
+                @if ($recurrence)
+                    <div class="rounded-2xl bg-sky-500/10 p-3 text-sm">
+                        <p class="font-medium text-sky-700 dark:text-sky-300">@svg('heroicon-m-arrow-path', 'inline size-4') Lançamento fixo · {{ mb_strtolower($recurrence->frequencyLabel()) }}</p>
+                        <p class="mb-2 mt-1 text-muted">Aplicar alterações e exclusão em:</p>
+                        <div class="grid grid-cols-2 gap-1 rounded-xl bg-card p-1 text-xs font-semibold">
+                            @foreach (['this' => 'Só este', 'future' => 'Este e os próximos'] as $value => $label)
+                                <label wire:key="rscope-{{ $value }}" @class(['tap cursor-pointer rounded-lg py-2 text-center', 'bg-sky-600 text-white' => $scope === $value, 'text-muted' => $scope !== $value])>
+                                    <input type="radio" wire:model.live="scope" value="{{ $value }}" class="sr-only"> {{ $label }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Parcela em edição --}}
                 @if ($plan)
                     <div class="rounded-2xl bg-violet-500/10 p-3 text-sm">
@@ -147,7 +162,7 @@
                 @endif
 
                 {{-- Data --}}
-                @unless ($planId)
+                @unless ($planId && $kind === 'card')
                     <div>
                         <p class="mb-1.5 text-sm font-medium">{{ $kind === 'card' ? 'Data da compra' : 'Data' }}</p>
                         <div class="flex gap-2">
@@ -167,6 +182,47 @@
                         :description="$kind === 'transfer' ? 'Desligue para agendar.' : 'Desligue para lançar como previsto (pendente).'" />
                 @endif
 
+                {{-- Repetir (novo lançamento) --}}
+                @if (! $editingId && in_array($kind, ['expense', 'income']))
+                    <div class="space-y-3 rounded-2xl border border-line p-3">
+                        <div class="grid grid-cols-3 gap-1 rounded-xl bg-canvas p-1 text-xs font-semibold">
+                            @foreach (['none' => 'Não repete', 'fixed' => 'Fixo', 'installments' => 'Parcelado'] as $value => $label)
+                                <label wire:key="repeat-{{ $value }}" @class(['tap cursor-pointer rounded-lg py-2 text-center', 'bg-card text-ink shadow-sm' => $repeat === $value, 'text-muted' => $repeat !== $value])>
+                                    <input type="radio" wire:model.live="repeat" value="{{ $value }}" class="sr-only"> {{ $label }}
+                                </label>
+                            @endforeach
+                        </div>
+                        @if ($repeat === 'fixed')
+                            <div class="grid grid-cols-2 gap-3">
+                                <x-ui.select label="Frequência" name="frequency" wire:model="frequency" :options="collect(\App\Models\Recurrence::FREQUENCIES)->map(fn ($f) => $f[0])->all()" />
+                                <x-ui.input label="Até (opcional)" name="end_date" type="date" wire:model="end_date" />
+                            </div>
+                            <x-ui.toggle wire:model="auto_mark_paid" label="Débito automático" description="Marca como pago sozinho no dia." />
+                        @elseif ($repeat === 'installments')
+                            <div class="flex items-center gap-3">
+                                <div class="w-28 shrink-0">
+                                    <x-ui.select name="installments" wire:model.live="installments" aria-label="Parcelas"
+                                        :options="collect(range(2, 120))->mapWithKeys(fn ($n) => [$n => $n.'x'])->all()" />
+                                </div>
+                                <div class="grid flex-1 grid-cols-2 gap-1 rounded-xl bg-canvas p-1 text-xs font-semibold">
+                                    @foreach (['total' => 'Valor total', 'parcel' => 'Valor da parcela'] as $mode => $label)
+                                        <label wire:key="amode-{{ $mode }}" @class(['tap cursor-pointer rounded-lg py-2 text-center', 'bg-card text-ink shadow-sm' => $installment_mode === $mode, 'text-muted' => $installment_mode !== $mode])>
+                                            <input type="radio" wire:model.live="installment_mode" value="{{ $mode }}" class="sr-only"> {{ $label }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <p class="text-xs text-muted">Uma parcela por mês a partir da data acima (boleto, carnê, financiamento). As próximas ficam como previstas.</p>
+                        @endif
+                    </div>
+                @elseif (! $editingId && $kind === 'card' && ! $is_refund && $installments === 1)
+                    <label class="flex cursor-pointer items-center gap-2 text-sm">
+                        <input type="checkbox" class="size-4 rounded accent-emerald-600"
+                               x-on:change="$wire.set('repeat', $event.target.checked ? 'fixed' : 'none')" @checked($repeat === 'fixed')>
+                        Assinatura / compra fixa todo mês neste cartão
+                    </label>
+                @endif
+
                 @if ($kind !== 'transfer')
                     @if ($showMore)
                         <div>
@@ -182,14 +238,14 @@
                 <div class="space-y-3 pt-1">
                     <x-ui.button class="w-full">{{ $editingId ? 'Salvar alterações' : 'Salvar' }}</x-ui.button>
                     @if ($editingId)
-                        @if ($planId)
+                        @if ($planId && $kind === 'card')
                             <x-ui.button type="button" variant="ghost" class="w-full" wire:click="anticipate"
                                 wire:confirm="Antecipar as parcelas futuras deste parcelamento para a fatura atual?">
                                 @svg('heroicon-o-forward', 'size-5') Antecipar parcelas futuras
                             </x-ui.button>
                         @endif
                         <x-ui.button type="button" variant="secondary" class="w-full !text-rose-600 dark:!text-rose-400"
-                            wire:click="delete" wire:confirm="{{ $planId ? 'Excluir as parcelas no escopo escolhido?' : 'Excluir este lançamento?' }}">Excluir</x-ui.button>
+                            wire:click="delete" wire:confirm="{{ $planId || $recurrence ? 'Excluir no escopo escolhido?' : 'Excluir este lançamento?' }}">Excluir</x-ui.button>
                     @else
                         <x-ui.button type="button" variant="ghost" class="w-full" wire:click="save(true)">Salvar e criar outro</x-ui.button>
                     @endif
