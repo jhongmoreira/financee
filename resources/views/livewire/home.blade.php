@@ -11,6 +11,12 @@
         </x-slot:leading>
         <x-slot:actions>
             <x-ui.privacy-toggle />
+            <a href="{{ route('notifications') }}" wire:navigate class="tap relative rounded-full p-2 text-muted hover:bg-card" aria-label="Notificações">
+                @svg('heroicon-o-bell', 'size-6')
+                @if ($unread)
+                    <span class="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{{ $unread > 9 ? '9+' : $unread }}</span>
+                @endif
+            </a>
         </x-slot:actions>
     </x-ui.app-bar>
 

@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Support\VapidKeys;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use NotificationChannels\WebPush\WebPushChannel;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,5 +27,8 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->isProduction()) {
             URL::forceHttps();
         }
+
+        // Web Push: garante as chaves VAPID (geradas e guardadas no storage se não houver no .env)
+        $this->app->beforeResolving(WebPushChannel::class, fn () => VapidKeys::ensure());
     }
 }

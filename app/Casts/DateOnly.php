@@ -18,6 +18,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DateOnly implements CastsAttributes
 {
+    /** Sempre reler do valor gravado (não reaproveitar o objeto DateTime recebido). */
+    public bool $withoutObjectCaching = true;
+
     public function get(Model $model, string $key, mixed $value, array $attributes): ?CarbonImmutable
     {
         if ($value === null || $value === '') {

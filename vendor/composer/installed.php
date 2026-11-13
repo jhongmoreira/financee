@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '8b94e5b25d749f47ff1fc0b851b267ccb7ca9593',
+        'reference' => '23f65cc5635783b9a85223a4a6d5c9f288e981e8',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -442,6 +442,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'laravel-notification-channels/webpush' => array(
+            'pretty_version' => '13.0.1',
+            'version' => '13.0.1.0',
+            'reference' => '53d950ca03b16bb49c45e3332c07a87c7d06a3b1',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../laravel-notification-channels/webpush',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'laravel/fortify' => array(
             'pretty_version' => 'v1.42.0',
             'version' => '1.42.0.0',
@@ -463,7 +472,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '8b94e5b25d749f47ff1fc0b851b267ccb7ca9593',
+            'reference' => '23f65cc5635783b9a85223a4a6d5c9f288e981e8',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -586,6 +595,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'minishlink/web-push' => array(
+            'pretty_version' => 'v11.0.0',
+            'version' => '11.0.0.0',
+            'reference' => 'f8410afb73486ab895bb4792b879bdca62025b47',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../minishlink/web-push',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'monolog/monolog' => array(
             'pretty_version' => '3.12.1',
             'version' => '3.12.1.0',
@@ -652,6 +670,45 @@
             'reference' => '5efef6e6cb43e088ccab7d0c1e2f2ab25b9e8b54',
             'type' => 'library',
             'install_path' => __DIR__ . '/../paragonie/constant_time_encoding',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'php-http/async-client-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '*',
+            ),
+        ),
+        'php-http/client-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '*',
+            ),
+        ),
+        'php-http/discovery' => array(
+            'pretty_version' => '1.20.0',
+            'version' => '1.20.0.0',
+            'reference' => '82fe4c73ef3363caed49ff8dd1539ba06044910d',
+            'type' => 'composer-plugin',
+            'install_path' => __DIR__ . '/../php-http/discovery',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'php-http/httplug' => array(
+            'pretty_version' => '2.4.1',
+            'version' => '2.4.1.0',
+            'reference' => '5cad731844891a4c282f3f3e1b582c46839d22f4',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../php-http/httplug',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'php-http/promise' => array(
+            'pretty_version' => '1.3.1',
+            'version' => '1.3.1.0',
+            'reference' => 'fc85b1fba37c169a69a07ef0d5a8075770cc1f83',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../php-http/promise',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
@@ -766,7 +823,8 @@
         'psr/http-client-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0',
+                0 => '*',
+                1 => '1.0',
             ),
         ),
         'psr/http-factory' => array(
@@ -781,7 +839,8 @@
         'psr/http-factory-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0',
+                0 => '*',
+                1 => '1.0',
             ),
         ),
         'psr/http-message' => array(
@@ -796,7 +855,8 @@
         'psr/http-message-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0',
+                0 => '*',
+                1 => '1.0',
             ),
         ),
         'psr/log' => array(
@@ -886,6 +946,15 @@
             'replaced' => array(
                 0 => '*',
             ),
+        ),
+        'spomky-labs/base64url' => array(
+            'pretty_version' => 'v2.0.4',
+            'version' => '2.0.4.0',
+            'reference' => '7752ce931ec285da4ed1f4c5aa27e45e097be61d',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../spomky-labs/base64url',
+            'aliases' => array(),
+            'dev_requirement' => false,
         ),
         'spomky-labs/cbor-php' => array(
             'pretty_version' => '3.4.2',
@@ -1283,6 +1352,15 @@
             'reference' => 'c7aeeb1d35e39b7d32ab5146cce4b668f271a68e',
             'type' => 'library',
             'install_path' => __DIR__ . '/../web-auth/webauthn-lib',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'web-token/jwt-library' => array(
+            'pretty_version' => '4.2.7',
+            'version' => '4.2.7.0',
+            'reference' => '62643a2f31274c546a7d158ceab6dd5c052db911',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../web-token/jwt-library',
             'aliases' => array(),
             'dev_requirement' => false,
         ),

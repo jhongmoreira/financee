@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\DateOnly;
 use App\Models\Concerns\BelongsToUser;
 use App\Services\AccountBalanceService;
+use App\Services\NotificationService;
 use Carbon\CarbonImmutable;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -50,6 +51,9 @@ class Transaction extends Model
         $flush = fn () => app(AccountBalanceService::class)->flush();
         static::saved($flush);
         static::deleted($flush);
+
+        // Avisa ao atingir 80%/100% do orçamento da categoria (uma vez por mês e limite)
+        static::saved(fn (Transaction $t) => app(NotificationService::class)->checkBudget($t));
     }
 
     /** @return BelongsTo<Account, $this> */
