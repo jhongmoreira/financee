@@ -105,3 +105,32 @@ it('isola carteiras entre usuários', function () {
     Livewire::test(Index::class)->call('createAsset')->set('asset_portfolio_id', (string) $foreign->id)
         ->set('asset_name', 'Y')->call('saveAsset')->assertHasErrors('asset_portfolio_id');
 });
+
+it('o formulário mostra o texto certo para cada tipo de movimento', function () {
+    $asset = InvestmentAsset::create(['portfolio_id' => $this->portfolio->id, 'name' => 'CDB', 'class' => 'cdb']);
+
+    Livewire::test(AssetPage::class, ['asset' => $asset])
+        ->call('newMovement', 'income')
+        ->assertSee('Valor do rendimento')->assertSee('Só o valor recebido')->assertDontSee('Valor atual do investimento')
+        ->call('newMovement', 'valuation')
+        ->assertSee('Valor atual do investimento')->assertDontSee('Valor do rendimento')
+        ->call('newMovement', 'contribution')
+        ->assertSee('Soma ao valor do investimento')->assertDontSee('Valor atual do investimento');
+});
+
+it('corrige um rendimento lançado por engano trocando o tipo para atualização', function () {
+    $asset = InvestmentAsset::create(['portfolio_id' => $this->portfolio->id, 'name' => 'CDB', 'class' => 'cdb']);
+    movement($asset, 'contribution', 200000, '2026-11-13');
+    movement($asset, 'income', 200109, '2026-11-13'); // o engano: total lançado como rendimento
+    $this->service->recalculate($asset);
+    expect($asset->fresh()->current_value)->toBe(400109);
+
+    $wrong = InvestmentMovement::where('type', 'income')->firstOrFail();
+    Livewire::test(AssetPage::class, ['asset' => $asset])
+        ->call('editMovement', $wrong->id)->assertSee('Editar rendimento')
+        ->set('type', 'valuation')->assertSee('Valor atual do investimento')
+        ->call('saveMovement')->assertHasNoErrors();
+
+    $stats = $this->service->stats(collect([$asset->fresh()]))[$asset->id];
+    expect($asset->fresh()->current_value)->toBe(200109)->and($stats['gain'])->toBe(109);
+});
