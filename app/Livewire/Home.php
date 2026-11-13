@@ -9,6 +9,7 @@ use App\Models\InvestmentPortfolio;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Models\Transfer;
+use App\Services\AccountBalanceService;
 use App\Services\BudgetService;
 use App\Services\InvestmentService;
 use App\Services\InvoiceService;
@@ -16,6 +17,7 @@ use App\Services\MonthSummary;
 use App\Support\Month;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -23,6 +25,20 @@ use Livewire\Component;
 #[Title('Início')]
 class Home extends Component
 {
+    /** Visão do card principal: "geral" (saldo geral) ou "patrimonio" (todas as contas + investimentos). */
+    public string $balanceView = 'geral';
+
+    public function mount(): void
+    {
+        $this->balanceView = Auth::user()?->setting('home_balance_view') === 'patrimonio' ? 'patrimonio' : 'geral';
+    }
+
+    public function toggleBalanceView(): void
+    {
+        $this->balanceView = $this->balanceView === 'geral' ? 'patrimonio' : 'geral';
+        Auth::user()?->updateSetting('home_balance_view', $this->balanceView);
+    }
+
     #[On('entry-saved')]
     public function refresh(): void
     {
@@ -84,6 +100,7 @@ class Home extends Component
             'accounts' => Account::query()->active()->ordered()->with('institution')->get(),
             'cardsCount' => $cards->count(),
             'investedTotal' => $investments->totalValue(),
+            'otherAccountsTotal' => $this->otherAccountsTotal(),
             'unread' => auth()->user()?->unreadNotifications()->count() ?? 0,
             'categoryChart' => $this->categoryChart($budgets, $month),
             'historyChart' => $this->historyChart($summary, $month),
@@ -95,6 +112,15 @@ class Home extends Component
             'pending' => $invoiceRows->values()->concat($pending->map(fn (Transaction $t) => $this->row($t)))->sortBy(fn ($r) => $r['date']->toDateString())->values(),
             'recent' => $recent->map(fn (Transaction $t) => $this->row($t)),
         ]);
+    }
+
+    /** Saldo atual das contas ativas que NÃO entram no saldo geral. */
+    private function otherAccountsTotal(): int
+    {
+        $balances = app(AccountBalanceService::class)->current();
+
+        return (int) Account::query()->active()->where('include_in_total', false)->pluck('id')
+            ->sum(fn (int $id) => $balances[$id] ?? 0);
     }
 
     /** @return array<string, mixed>|null rosca de despesas do mês por categoria */
