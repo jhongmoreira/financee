@@ -26,6 +26,7 @@ class UserDataReset
         'investment_portfolios',
         'credit_cards',
         'accounts',
+        'account_categories',
         'notification_logs',
     ];
 
