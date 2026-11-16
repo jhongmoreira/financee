@@ -24,7 +24,7 @@ class Account extends Model
     ];
 
     protected $fillable = [
-        'institution_id', 'name', 'type', 'initial_balance', 'color', 'include_in_total', 'sort_order', 'archived_at',
+        'institution_id', 'account_category_id', 'name', 'type', 'initial_balance', 'color', 'include_in_total', 'sort_order', 'archived_at',
     ];
 
     protected function casts(): array
@@ -40,6 +40,12 @@ class Account extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    /** @return BelongsTo<AccountCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(AccountCategory::class, 'account_category_id');
     }
 
     /** @param Builder<Account> $query */

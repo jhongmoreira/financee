@@ -37,6 +37,7 @@
                                 <span class="block truncate font-medium">{{ $account->name }}</span>
                                 <span class="block truncate text-sm text-muted">
                                     {{ $account->typeLabel() }}
+                                    @if ($account->category) · {{ $account->category->name }} @endif
                                     @if ($account->archived_at) · Arquivada @elseif (! $account->include_in_total) · Fora do total @endif
                                 </span>
                             </span>
@@ -62,13 +63,59 @@
                 @endif
             </div>
         </x-ui.section>
+
+        <x-ui.section>
+            <x-ui.card class="overflow-hidden" x-data>
+                <x-ui.list-item icon="tag" icon-class="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300"
+                    label="Categorias de contas" description="Ex.: Reserva de emergência. Use para filtrar o saldo no Início."
+                    :badge="$accountCategories->count() ?: null" @click="$dispatch('open-sheet', 'account-categories')" :chevron="true" />
+            </x-ui.card>
+        </x-ui.section>
     </div>
+
+    <x-ui.bottom-sheet name="account-categories" title="Categorias de contas">
+        <div class="space-y-4">
+            @if ($accountCategories->isEmpty())
+                <p class="text-sm text-muted">Crie categorias como “Reserva de emergência” ou “Dia a dia”, escolha a categoria ao editar cada conta e filtre o saldo da tela inicial por elas.</p>
+            @else
+                <div class="divide-y divide-line overflow-hidden rounded-2xl border border-line">
+                    @foreach ($accountCategories as $accountCategory)
+                        <div wire:key="acc-cat-{{ $accountCategory->id }}" @class(['flex items-center gap-1 py-1.5 pl-4 pr-1.5', 'bg-brand-soft' => $categoryEditingId === $accountCategory->id])>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate font-medium">{{ $accountCategory->name }}</span>
+                                <span class="block text-sm text-muted">{{ $accountCategory->accounts_count }} {{ $accountCategory->accounts_count === 1 ? 'conta' : 'contas' }}</span>
+                            </span>
+                            <button type="button" wire:click="editCategory({{ $accountCategory->id }})" class="tap rounded-full p-2 text-muted hover:bg-card-hover" aria-label="Renomear {{ $accountCategory->name }}">
+                                @svg('heroicon-o-pencil-square', 'size-5')
+                            </button>
+                            <button type="button" wire:click="deleteCategory({{ $accountCategory->id }})" class="tap rounded-full p-2 text-rose-600 hover:bg-card-hover dark:text-rose-400" aria-label="Excluir {{ $accountCategory->name }}"
+                                    wire:confirm="Excluir a categoria “{{ $accountCategory->name }}”? As contas continuam existindo, só ficam sem categoria.">
+                                @svg('heroicon-o-trash', 'size-5')
+                            </button>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            <form wire:submit="saveCategory" class="space-y-3">
+                <x-ui.input :label="$categoryEditingId ? 'Renomear categoria' : 'Nova categoria'" name="categoryName" wire:model="categoryName" placeholder="Ex.: Reserva de emergência" maxlength="40" />
+                <div class="flex gap-3">
+                    @if ($categoryEditingId)
+                        <x-ui.button type="button" variant="secondary" class="flex-1" wire:click="cancelCategoryEdit">Cancelar</x-ui.button>
+                    @endif
+                    <x-ui.button class="flex-1">{{ $categoryEditingId ? 'Salvar' : 'Adicionar' }}</x-ui.button>
+                </div>
+            </form>
+        </div>
+    </x-ui.bottom-sheet>
 
     <x-ui.bottom-sheet name="account-form" :title="$editingId ? 'Editar conta' : 'Nova conta'">
         <form wire:submit="save" class="space-y-4">
             <x-ui.select label="Instituição" name="institution_id" wire:model.live="institution_id" :options="$institutions" placeholder="Nenhuma / dinheiro" />
             <x-ui.input label="Nome" name="name" wire:model="name" placeholder="Ex.: Nubank, Carteira" maxlength="60" />
             <x-ui.select label="Tipo" name="type" wire:model="type" :options="collect(\App\Models\Account::TYPES)->map(fn ($t) => $t[0])->all()" />
+            <x-ui.select label="Categoria" name="account_category_id" wire:model="account_category_id" :options="$accountCategories->pluck('name', 'id')->all()" placeholder="Sem categoria"
+                :hint="$accountCategories->isEmpty() ? 'Cadastre em “Categorias de contas”, no fim desta tela.' : null" />
             <x-ui.money-input :label="$editingId ? 'Saldo inicial' : 'Saldo atual'" name="initial_balance" wire:model="initial_balance" allow-negative
                 hint="Use − para conta no negativo (cheque especial)." />
             <x-ui.color-picker wire:model="color" />

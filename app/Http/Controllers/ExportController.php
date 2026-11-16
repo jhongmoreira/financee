@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Livewire\Reports\Index as ReportsIndex;
 use App\Models\Account;
+use App\Models\AccountCategory;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\CreditCard;
@@ -141,6 +142,7 @@ class ExportController
                 'note' => 'Valores em centavos. Datas no formato AAAA-MM-DD.',
                 'user' => ['name' => $user?->name, 'email' => $user?->email],
                 'accounts' => Account::all(),
+                'account_categories' => AccountCategory::all(),
                 'credit_cards' => CreditCard::all(),
                 'categories' => Category::all(),
                 'transactions' => Transaction::all(),

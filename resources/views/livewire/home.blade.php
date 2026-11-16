@@ -23,12 +23,29 @@
     <div class="space-y-5 pt-2">
         <div class="px-4">
             <div class="rounded-3xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 text-white shadow-lg shadow-emerald-900/20">
-                <button type="button" wire:click="toggleBalanceView" class="tap -mx-1 flex items-center gap-1.5 rounded-lg px-1 text-sm text-white/80 hover:text-white"
-                        aria-label="{{ $balanceView === 'geral' ? 'Mostrar patrimônio total' : 'Mostrar saldo geral' }}">
-                    {{ $balanceView === 'geral' ? 'Saldo geral' : 'Patrimônio total' }}
-                    @svg('heroicon-m-arrows-right-left', 'size-4')
-                </button>
-                @if ($balanceView === 'geral')
+                <div class="flex items-center justify-between gap-2">
+                    @if ($balanceFilter['active'])
+                        <p class="min-w-0 truncate text-sm text-white/80">{{ $balanceFilter['label'] }}</p>
+                    @else
+                        <button type="button" wire:click="toggleBalanceView" class="tap -mx-1 flex items-center gap-1.5 rounded-lg px-1 text-sm text-white/80 hover:text-white"
+                                aria-label="{{ $balanceView === 'geral' ? 'Mostrar patrimônio total' : 'Mostrar saldo geral' }}">
+                            {{ $balanceView === 'geral' ? 'Saldo geral' : 'Patrimônio total' }}
+                            @svg('heroicon-m-arrows-right-left', 'size-4')
+                        </button>
+                    @endif
+                    <button type="button" x-data @click="$dispatch('open-sheet', 'balance-filter')"
+                            @class(['tap -my-1 -mr-1.5 shrink-0 rounded-full p-1.5 hover:bg-white/15', 'bg-white/25 text-white' => $balanceFilter['active'], 'text-white/80' => ! $balanceFilter['active']])
+                            aria-label="Filtrar saldo por categoria de conta{{ $balanceFilter['active'] ? ' (filtro ativo)' : '' }}">
+                        @svg($balanceFilter['active'] ? 'heroicon-s-funnel' : 'heroicon-o-funnel', 'size-5')
+                    </button>
+                </div>
+                @if ($balanceFilter['active'])
+                    <x-ui.money :value="$balanceFilter['total']" class="mt-1 block text-3xl font-bold" />
+                    <p class="mt-1 text-xs text-white/80">
+                        Soma de {{ $balanceFilter['count'] }} {{ $balanceFilter['count'] === 1 ? 'conta' : 'contas' }} ·
+                        <button type="button" wire:click="clearCategoryFilter" class="font-semibold text-white underline underline-offset-2">Limpar filtro</button>
+                    </p>
+                @elseif ($balanceView === 'geral')
                     <x-ui.money :value="$total" class="mt-1 block text-3xl font-bold" />
                     <p class="mt-1 text-xs text-white/80">Previsto para o fim de {{ mb_strtolower($monthLabel) }}: <x-ui.money :value="$projected" class="font-semibold text-white" /></p>
                 @else
@@ -53,6 +70,32 @@
                 </div>
             </div>
         </div>
+
+        <x-ui.bottom-sheet name="balance-filter" title="Filtrar saldo">
+            @if ($balanceFilter['options'] === [])
+                <p class="text-sm text-muted">Crie categorias de contas (ex.: “Reserva de emergência”) e escolha a categoria de cada conta. Depois, filtre aqui para ver só o saldo delas.</p>
+                <x-ui.button :href="route('accounts')" class="mt-4 w-full" wire:navigate>Cadastrar categorias</x-ui.button>
+            @else
+                <p class="text-sm text-muted">Marque as categorias de contas que devem ser somadas no saldo. Sem nada marcado, vale o saldo geral.</p>
+                <div class="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line">
+                    @foreach ($balanceFilter['options'] as $filterOption)
+                        <label wire:key="bf-{{ $filterOption['id'] }}" class="tap flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-card-hover">
+                            <input type="checkbox" wire:model.live="categoryFilter" value="{{ $filterOption['id'] }}" class="size-5 shrink-0 rounded accent-emerald-600">
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate font-medium">{{ $filterOption['name'] }}</span>
+                                <span class="block text-sm text-muted">{{ $filterOption['count'] }} {{ $filterOption['count'] === 1 ? 'conta' : 'contas' }}</span>
+                            </span>
+                            <x-ui.money :value="$filterOption['total']" @class(['font-semibold', 'text-expense' => $filterOption['total'] < 0]) />
+                        </label>
+                    @endforeach
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                    <x-ui.button type="button" variant="secondary" wire:click="clearCategoryFilter" :disabled="! $balanceFilter['active']">Limpar</x-ui.button>
+                    <x-ui.button type="button" x-on:click="close()">Concluir</x-ui.button>
+                </div>
+                <x-ui.button :href="route('accounts')" variant="ghost" class="mt-2 w-full" wire:navigate>Gerenciar categorias</x-ui.button>
+            @endif
+        </x-ui.bottom-sheet>
 
         @if ($pending->isNotEmpty())
             <x-ui.section title="Contas a pagar e receber">

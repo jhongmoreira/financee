@@ -33,6 +33,7 @@ return array(
     'App\\Livewire\\Reports\\Index' => $baseDir . '/app/Livewire/Reports/Index.php',
     'App\\Livewire\\Transactions\\Index' => $baseDir . '/app/Livewire/Transactions/Index.php',
     'App\\Models\\Account' => $baseDir . '/app/Models/Account.php',
+    'App\\Models\\AccountCategory' => $baseDir . '/app/Models/AccountCategory.php',
     'App\\Models\\Budget' => $baseDir . '/app/Models/Budget.php',
     'App\\Models\\Category' => $baseDir . '/app/Models/Category.php',
     'App\\Models\\Concerns\\BelongsToUser' => $baseDir . '/app/Models/Concerns/BelongsToUser.php',

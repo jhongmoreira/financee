@@ -711,6 +711,7 @@ class ComposerStaticInit2025ef88a2358bc0abf9d317966fe371
         'App\\Livewire\\Reports\\Index' => __DIR__ . '/../..' . '/app/Livewire/Reports/Index.php',
         'App\\Livewire\\Transactions\\Index' => __DIR__ . '/../..' . '/app/Livewire/Transactions/Index.php',
         'App\\Models\\Account' => __DIR__ . '/../..' . '/app/Models/Account.php',
+        'App\\Models\\AccountCategory' => __DIR__ . '/../..' . '/app/Models/AccountCategory.php',
         'App\\Models\\Budget' => __DIR__ . '/../..' . '/app/Models/Budget.php',
         'App\\Models\\Category' => __DIR__ . '/../..' . '/app/Models/Category.php',
         'App\\Models\\Concerns\\BelongsToUser' => __DIR__ . '/../..' . '/app/Models/Concerns/BelongsToUser.php',
