@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Account;
+use App\Models\AccountCategory;
 use App\Models\Category;
 use App\Models\CreditCard;
 use App\Models\InvestmentPortfolio;
@@ -28,9 +29,31 @@ class Home extends Component
     /** Visão do card principal: "geral" (saldo geral) ou "patrimonio" (todas as contas + investimentos). */
     public string $balanceView = 'geral';
 
+    /**
+     * Categorias de contas marcadas no filtro do saldo (ids como texto; "0" = contas sem categoria).
+     * Vazio = sem filtro.
+     *
+     * @var list<string>
+     */
+    public array $categoryFilter = [];
+
     public function mount(): void
     {
         $this->balanceView = Auth::user()?->setting('home_balance_view') === 'patrimonio' ? 'patrimonio' : 'geral';
+        $this->categoryFilter = $this->validCategoryFilter(Auth::user()?->setting('home_account_categories'));
+    }
+
+    /** Os valores vêm do navegador: mantém só categorias do usuário e guarda a escolha. */
+    public function updatedCategoryFilter(): void
+    {
+        $this->categoryFilter = $this->validCategoryFilter($this->categoryFilter);
+        Auth::user()?->updateSetting('home_account_categories', $this->categoryFilter);
+    }
+
+    public function clearCategoryFilter(): void
+    {
+        $this->categoryFilter = [];
+        Auth::user()?->updateSetting('home_account_categories', []);
     }
 
     public function toggleBalanceView(): void
@@ -101,6 +124,7 @@ class Home extends Component
             'cardsCount' => $cards->count(),
             'investedTotal' => $investments->totalValue(),
             'otherAccountsTotal' => $this->otherAccountsTotal(),
+            'balanceFilter' => $this->balanceFilter(),
             'unread' => auth()->user()?->unreadNotifications()->count() ?? 0,
             'categoryChart' => $this->categoryChart($budgets, $month),
             'historyChart' => $this->historyChart($summary, $month),
@@ -112,6 +136,55 @@ class Home extends Component
             'pending' => $invoiceRows->values()->concat($pending->map(fn (Transaction $t) => $this->row($t)))->sortBy(fn ($r) => $r['date']->toDateString())->values(),
             'recent' => $recent->map(fn (Transaction $t) => $this->row($t)),
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function validCategoryFilter(mixed $value): array
+    {
+        $valid = AccountCategory::query()->pluck('id')->map(fn ($id) => (string) $id)->push('0');
+
+        return $valid->intersect(is_array($value) ? array_filter($value, 'is_scalar') : [])->values()->all();
+    }
+
+    /**
+     * Opções do filtro (categoria + saldo das contas ativas dela) e, com filtro ativo,
+     * a soma das contas das categorias marcadas — inclusive as que ficam fora do saldo geral.
+     *
+     * @return array{options: list<array{id: string, name: string, count: int, total: int}>, active: bool, label: string, count: int, total: int}
+     */
+    private function balanceFilter(): array
+    {
+        $balances = app(AccountBalanceService::class)->current();
+        $byCategory = Account::query()->active()->get(['id', 'account_category_id'])
+            ->groupBy(fn (Account $a) => (string) ($a->account_category_id ?? 0));
+
+        $options = AccountCategory::query()->orderBy('name')->get()
+            ->map(fn (AccountCategory $c) => ['id' => (string) $c->id, 'name' => $c->name]);
+
+        if ($options->isNotEmpty() && $byCategory->has('0')) {
+            $options->push(['id' => '0', 'name' => 'Sem categoria']);
+        }
+
+        $options = $options->map(function (array $option) use ($byCategory, $balances) {
+            $accounts = $byCategory->get($option['id'], collect());
+
+            return $option + [
+                'count' => $accounts->count(),
+                'total' => (int) $accounts->sum(fn (Account $a) => $balances[$a->id] ?? 0),
+            ];
+        })->values();
+
+        $selected = $options->whereIn('id', $this->categoryFilter);
+
+        return [
+            'options' => $options->all(),
+            'active' => $selected->isNotEmpty(),
+            'label' => $selected->count() > 2 ? $selected->count().' categorias' : $selected->pluck('name')->implode(' + '),
+            'count' => array_sum($selected->pluck('count')->all()),
+            'total' => array_sum($selected->pluck('total')->all()),
+        ];
     }
 
     /** Saldo atual das contas ativas que NÃO entram no saldo geral. */

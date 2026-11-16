@@ -2,6 +2,7 @@
 
 use App\Livewire\Accounts\Index;
 use App\Models\Account;
+use App\Models\AccountCategory;
 use App\Models\Institution;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -76,4 +77,43 @@ it('não permite editar conta de outro usuário', function () {
 it('exibe a tela', function () {
     Account::create(['name' => 'Conta X', 'type' => 'checking', 'color' => '#059669', 'initial_balance' => 12345]);
     $this->get('/contas')->assertOk()->assertSee('Conta X')->assertSee('R$ 123,45');
+});
+
+it('cadastra, renomeia e exclui categorias de contas', function () {
+    $component = Livewire::test(Index::class)
+        ->set('categoryName', '  Reserva de emergência ')->call('saveCategory')->assertHasNoErrors()
+        ->set('categoryName', 'Reserva de emergência')->call('saveCategory')->assertHasErrors('categoryName')
+        ->set('categoryName', '')->call('saveCategory')->assertHasErrors('categoryName');
+
+    $category = AccountCategory::firstOrFail();
+    expect($category)->name->toBe('Reserva de emergência')->user_id->toBe($this->user->id);
+
+    $component->call('editCategory', $category->id)->assertSet('categoryName', 'Reserva de emergência')
+        ->set('categoryName', 'Reserva')->call('saveCategory')->assertHasNoErrors();
+    expect($category->fresh()->name)->toBe('Reserva')->and(AccountCategory::count())->toBe(1);
+
+    $account = Account::create(['name' => 'Caixinha', 'type' => 'savings', 'color' => '#059669', 'account_category_id' => $category->id]);
+
+    $component->call('deleteCategory', $category->id);
+    expect(AccountCategory::count())->toBe(0)->and($account->fresh()->account_category_id)->toBeNull();
+});
+
+it('categoriza uma conta e não aceita categoria de outro usuário', function () {
+    $category = AccountCategory::create(['name' => 'Reserva de emergência']);
+    $account = Account::create(['name' => 'Caixinha', 'type' => 'savings', 'color' => '#059669']);
+
+    $component = Livewire::test(Index::class)->call('edit', $account->id)
+        ->set('account_category_id', (string) $category->id)->call('save')->assertHasNoErrors();
+    expect($account->fresh()->account_category_id)->toBe($category->id);
+
+    $component->call('edit', $account->id)->assertSet('account_category_id', (string) $category->id)
+        ->set('account_category_id', '')->call('save')->assertHasNoErrors();
+    expect($account->fresh()->account_category_id)->toBeNull();
+
+    $foreign = new AccountCategory(['name' => 'Alheia']);
+    $foreign->user_id = User::factory()->create()->id;
+    $foreign->save();
+
+    Livewire::test(Index::class)->call('edit', $account->id)
+        ->set('account_category_id', (string) $foreign->id)->call('save')->assertHasErrors('account_category_id');
 });

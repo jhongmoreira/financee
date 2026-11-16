@@ -3,11 +3,13 @@
 namespace App\Livewire\Accounts;
 
 use App\Models\Account;
+use App\Models\AccountCategory;
 use App\Models\Institution;
 use App\Models\Transaction;
 use App\Support\Reorder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -33,6 +35,8 @@ class Index extends Component
     public string $type = 'checking';
 
     public ?string $institution_id = null;
+
+    public ?string $account_category_id = null;
 
     public int $initial_balance = 0;
 
@@ -61,6 +65,7 @@ class Index extends Component
         $this->name = $account->name;
         $this->type = $account->type;
         $this->institution_id = $account->institution_id ? (string) $account->institution_id : null;
+        $this->account_category_id = $account->account_category_id ? (string) $account->account_category_id : null;
         $this->initial_balance = $account->initial_balance;
         $this->color = $account->color;
         $this->include_in_total = $account->include_in_total;
@@ -88,10 +93,15 @@ class Index extends Component
             'name' => ['required', 'string', 'max:60'],
             'type' => ['required', Rule::in(array_keys(Account::TYPES))],
             'institution_id' => ['nullable', 'integer', 'exists:institutions,id'],
+            'account_category_id' => ['nullable', 'integer', Rule::exists('account_categories', 'id')->where('user_id', Auth::id())],
             'initial_balance' => ['required', 'integer', 'between:-100000000000,100000000000'],
             'color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'include_in_total' => ['boolean'],
         ]);
+
+        // O select envia '' quando nada é escolhido
+        $data['institution_id'] = $data['institution_id'] ?: null;
+        $data['account_category_id'] = $data['account_category_id'] ?: null;
 
         if ($this->editingId) {
             Account::findOrFail($this->editingId)->update($data);
@@ -160,11 +170,75 @@ class Index extends Component
         $this->resetForm();
     }
 
+    // ---- Categorias de contas (ex.: "Reserva de emergência") ----
+
+    public string $categoryName = '';
+
+    #[Locked]
+    public ?int $categoryEditingId = null;
+
+    public function editCategory(int $id): void
+    {
+        $category = AccountCategory::findOrFail($id);
+
+        $this->resetValidation('categoryName');
+        $this->categoryEditingId = $category->id;
+        $this->categoryName = $category->name;
+    }
+
+    public function cancelCategoryEdit(): void
+    {
+        $this->resetValidation('categoryName');
+        $this->reset('categoryEditingId', 'categoryName');
+    }
+
+    public function saveCategory(): void
+    {
+        $this->categoryName = trim($this->categoryName);
+
+        $this->validate([
+            'categoryName' => [
+                'required', 'string', 'max:40',
+                Rule::unique('account_categories', 'name')->where('user_id', Auth::id())->ignore($this->categoryEditingId),
+            ],
+        ], ['categoryName.unique' => 'Já existe uma categoria com esse nome.'], ['categoryName' => 'nome']);
+
+        if ($this->categoryEditingId) {
+            AccountCategory::findOrFail($this->categoryEditingId)->update(['name' => $this->categoryName]);
+            $message = 'Categoria atualizada.';
+        } else {
+            AccountCategory::create(['name' => $this->categoryName]);
+            $message = 'Categoria criada.';
+        }
+
+        $this->dispatch('toast', message: $message);
+        $this->cancelCategoryEdit();
+        unset($this->accounts);
+    }
+
+    /** As contas da categoria continuam existindo, só ficam sem categoria. */
+    public function deleteCategory(int $id): void
+    {
+        $category = AccountCategory::findOrFail($id);
+        $category->accounts()->update(['account_category_id' => null]);
+        $category->delete();
+
+        if ($this->categoryEditingId === $id) {
+            $this->cancelCategoryEdit();
+        }
+        if ($this->account_category_id === (string) $id) {
+            $this->account_category_id = null;
+        }
+
+        $this->dispatch('toast', message: 'Categoria excluída.');
+        unset($this->accounts);
+    }
+
     /** @return Collection<int, Account> */
     #[Computed]
     public function accounts(): Collection
     {
-        return Account::query()->with('institution')
+        return Account::query()->with(['institution', 'category'])
             ->when(! $this->showArchived, fn ($q) => $q->active())
             ->ordered()->get();
     }
@@ -179,6 +253,7 @@ class Index extends Component
     {
         return view('livewire.accounts.index', [
             'institutions' => Institution::options('bank'),
+            'accountCategories' => AccountCategory::query()->withCount('accounts')->orderBy('name')->get(),
             'editing' => $this->editingId ? Account::find($this->editingId) : null,
         ]);
     }
@@ -186,6 +261,6 @@ class Index extends Component
     private function resetForm(): void
     {
         $this->resetValidation();
-        $this->reset('editingId', 'name', 'type', 'institution_id', 'initial_balance', 'color', 'include_in_total', 'real_balance');
+        $this->reset('editingId', 'name', 'type', 'institution_id', 'account_category_id', 'initial_balance', 'color', 'include_in_total', 'real_balance');
     }
 }
