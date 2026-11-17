@@ -22,10 +22,14 @@ class PostDeploy extends Command
     protected $description = 'Aplica migrations e caches quando uma nova versão é publicada';
 
     /** @var list<list<string>> */
+    // config:clear e package:discover não tocam no banco; as migrations vêm antes
+    // de optimize:clear porque ele limpa o cache "database", cuja tabela não
+    // existe num banco recém-criado (no Estudy, o primeiro deploy falhou aqui).
     public const STEPS = [
-        ['optimize:clear'],
+        ['config:clear'],
         ['package:discover'],
         ['migrate', '--force'],
+        ['optimize:clear'],
         ['optimize'],
         ['storage:link'],
     ];
