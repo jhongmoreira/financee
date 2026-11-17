@@ -51,6 +51,10 @@ MAIL_FROM_NAME=Financee
 - [x] E-mail SMTP configurado (13/11/2026): conta nao-responda@jgmoreira.com.br criada via `uapi`; para conferir o mailer ativo: `artisan tinker --execute="echo config('mail.default');"` (deve ser smtp)
 - [ ] Uso real por 1–2 semanas conferindo saldos e faturas com os bancos
 
+## Correções de 17/11/2026 (vindas do Estudy)
+- `app:post-deploy`: migrations antes do `optimize:clear` (banco novo não tem a tabela `cache`).
+- `scripts/release.sh`: remove a branch `release/*` no GitHub com `git push --delete` em vez de `gh pr merge --delete-branch`.
+
 ## Cuidados
 - Não altere a versão do PHP pelo painel: o cPanel reescreve `public/.htaccess` e trava o deploy ("arquivos alterados manualmente"). Se acontecer: `cd ~/public_html/financee && git status`.
-- Deploy: `scripts/release.sh` (testes + Larastan + build + PR para `production` com merge automático).
+- Deploy: `scripts/release.sh` (testes + Larastan + build + PR para `production` com merge automático). A branch `release/*` é apagada no GitHub depois do merge (não use `gh pr merge --delete-branch` no script: a branch local está presa ao worktree temporário e o comando falha).

@@ -134,5 +134,8 @@ if [[ $MERGE -eq 0 ]]; then
     exit 0
 fi
 
-gh pr merge "$PR_URL" --merge --delete-branch >/dev/null
+# Remove a branch remota à parte: com --delete-branch o gh tenta apagar a
+# branch local, que ainda está presa ao worktree temporário, e o script falha.
+gh pr merge "$PR_URL" --merge >/dev/null
+git push -q origin --delete "$BRANCH" || true
 info "PR mergeada: release ${RELEASE} publicado. O cron aplica as migrations em até 1 minuto."
