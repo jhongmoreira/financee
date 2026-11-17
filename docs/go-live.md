@@ -7,7 +7,7 @@ Suíte de testes automatizados (Pest) e análise estática (Larastan nível 6) r
 ## O que roda sozinho no servidor (cron a cada minuto)
 | Quando | Comando | O quê |
 |---|---|---|
-| a cada minuto | `app:post-deploy` | Após um deploy: migrations + caches (cada passo em processo separado) |
+| a cada minuto | `app:post-deploy` | Após um deploy: migrations + caches (cada passo em processo separado; migrations antes do `optimize:clear`, para funcionar também com banco novo) |
 | a cada minuto | `queue:work --stop-when-empty` | Fila: envio das notificações push |
 | 03:10 | `recurrences:generate` | Estende os lançamentos fixos (até 31/12 do ano seguinte) e efetiva débitos automáticos |
 | 09:00 | `notifications:send` | Avisos do dia (contas, faturas, saldo negativo, investimentos) |

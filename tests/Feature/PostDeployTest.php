@@ -42,3 +42,9 @@ it('não marca o release como aplicado se um passo falhar', function () {
 
     expect(File::exists(storage_path('app/deployed_release')))->toBeFalse();
 });
+
+it('roda as migrations antes de limpar o cache (banco novo não tem a tabela cache)', function () {
+    $steps = array_map(fn ($s) => $s[0], PostDeploy::STEPS);
+
+    expect(array_search('migrate', $steps))->toBeLessThan(array_search('optimize:clear', $steps));
+});
