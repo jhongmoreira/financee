@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,11 @@ trait BelongsToUser
                 $model->user_id = Auth::id();
             }
         });
+
+        // Histórico de atividades (só ações de quem está logado; o cron não entra)
+        foreach (['created', 'updated', 'deleted'] as $event) {
+            static::$event(fn ($model) => app(ActivityLogger::class)->model($model, $event));
+        }
     }
 
     /** @return BelongsTo<User, $this> */

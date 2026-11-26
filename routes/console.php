@@ -1,10 +1,15 @@
 <?php
 
+use App\Models\ActivityLog;
+use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\RecurrenceService;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Str;
 
 /*
 | Cron da Hostoo (uma única linha):
@@ -60,3 +65,33 @@ Artisan::command('app:db-maintenance {--vacuum}', function () {
 
 Schedule::command('app:db-maintenance')->weeklyOn(0, '04:00')->withoutOverlapping();
 Schedule::command('app:db-maintenance --vacuum')->monthlyOn(1, '04:30')->withoutOverlapping();
+
+// Histórico de atividades: guarda 180 dias (roda dentro do schedule:run, sem subir outro PHP)
+Schedule::call(fn () => ActivityLog::query()->where('created_at', '<', now()->subDays(180))->delete())
+    ->name('activity:prune')->dailyAt('03:40')->withoutOverlapping();
+
+// Cria (ou promove) o super usuário. Sem --password, gera uma senha temporária e mostra na tela.
+Artisan::command('app:create-admin {email} {--name=} {--password=}', function (string $email) {
+    $email = mb_strtolower(trim($email));
+    $password = (string) ($this->option('password') ?: Str::password(14, symbols: false));
+    $user = User::query()->where('email', $email)->first();
+
+    if ($user) {
+        $user->update(['is_admin' => true, 'is_active' => true]);
+        $this->info("{$email} agora é administrador (senha mantida).");
+
+        return 0;
+    }
+
+    $user = User::query()->create([
+        'name' => $this->option('name') ?: 'Administrador',
+        'email' => $email,
+        'password' => Hash::make($password),
+        'is_admin' => true,
+    ]);
+    event(new Registered($user)); // categorias e carteira padrão
+    $this->info("Administrador criado: {$email}");
+    $this->line("Senha temporária: {$password}");
+
+    return 0;
+})->purpose('Cria ou promove o super usuário (administrador)');

@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use App\Services\ActivityLogger;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property array<string, mixed>|null $settings
+ * @property bool $is_admin
+ * @property bool $is_active
  */
 class User extends Authenticatable
 {
@@ -40,6 +44,8 @@ class User extends Authenticatable
     protected $attributes = [
         'avatar_path' => null,
         'settings' => null,
+        'is_admin' => false,
+        'is_active' => true,
     ];
 
     protected $fillable = [
@@ -48,6 +54,8 @@ class User extends Authenticatable
         'password',
         'avatar_path',
         'settings',
+        'is_admin',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -61,7 +69,26 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'settings' => 'array',
+            'is_admin' => 'boolean',
+            'is_active' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Histórico: mudanças de perfil feitas pela própria pessoa (tema e preferências não entram)
+        static::updated(function (User $user) {
+            $fields = array_values(array_intersect(array_keys($user->getChanges()), ['name', 'email', 'password', 'avatar_path']));
+            if ($fields !== [] && Auth::id() === $user->id) {
+                $labels = ['name' => 'nome', 'email' => 'e-mail', 'password' => 'senha', 'avatar_path' => 'foto'];
+                app(ActivityLogger::class)->log('profile_updated', 'Alterou o perfil: '.implode(', ', array_map(fn ($f) => $labels[$f], $fields)), $user);
+            }
+        });
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->is_admin && $this->is_active;
     }
 
     public function setting(string $key): mixed

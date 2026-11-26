@@ -4,6 +4,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Livewire\Accounts;
+use App\Livewire\Admin;
 use App\Livewire\Cards;
 use App\Livewire\Categories;
 use App\Livewire\Home;
@@ -42,4 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/exportar/relatorio.pdf', [ExportController::class, 'pdf'])->name('export.pdf');
     Route::get('/exportar/backup.json', [ExportController::class, 'backup'])->name('export.backup');
     Route::get('/investimentos/ativo/{asset}', Investments\Asset::class)->name('investments.asset');
+
+    // Administração (super usuário)
+    Route::middleware('can:admin')->prefix('admin')->group(function () {
+        Route::get('/usuarios', Admin\Users::class)->name('admin.users');
+        Route::get('/historico', Admin\Activity::class)->name('admin.activity');
+    });
 });
