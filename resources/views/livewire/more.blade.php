@@ -29,6 +29,15 @@
             </x-ui.card>
         </x-ui.section>
 
+        @can('admin')
+            <x-ui.section title="Administração">
+                <x-ui.card class="divide-y divide-line overflow-hidden">
+                    <x-ui.list-item icon="user-group" icon-class="bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300" label="Usuários" description="Contas, acesso e senhas" :href="route('admin.users')" />
+                    <x-ui.list-item icon="clock" icon-class="bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300" label="Histórico de atividades" description="Acessos, navegação e alterações" :href="route('admin.activity')" />
+                </x-ui.card>
+            </x-ui.section>
+        @endcan
+
         <x-ui.section title="Aparência">
             <x-ui.card class="p-1.5">
                 <div class="grid grid-cols-3 gap-1" role="radiogroup" aria-label="Tema">
